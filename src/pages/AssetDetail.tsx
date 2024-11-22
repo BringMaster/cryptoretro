@@ -4,8 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getAssetDetails, getAssetHistory, getAssetNews, getAssetMarkets } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { Card, CardContent } from '@/components/ui/card';
+import AssetMarkets from '@/components/asset/AssetMarkets';
+import AssetNews from '@/components/asset/AssetNews';
 
 const intervals = [
   { label: '24H', value: 'h1' },
@@ -169,71 +170,21 @@ const AssetDetail = () => {
 
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-4">Where to Trade {asset.name}</h2>
-          {isLoadingMarkets ? (
-            <div className="animate-pulse space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-16 bg-gray-200 rounded" />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {markets?.map((market: any) => (
-                <Card key={market.exchangeId} className="border-2 border-black">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold">{market.exchangeId}</h3>
-                        <p className="text-sm text-gray-600">Trading Pair: {market.baseSymbol}/{market.quoteSymbol}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono">${parseFloat(market.priceUsd).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                        <p className="text-sm text-gray-600">Volume: ${parseFloat(market.volumeUsd24Hr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <AssetMarkets
+            markets={markets || []}
+            isLoading={isLoadingMarkets}
+            assetName={asset.name}
+          />
         </div>
       </div>
 
       <div className="brutalist-card p-8">
         <h2 className="text-3xl font-bold mb-6">Latest News</h2>
-        {isLoadingNews ? (
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-4">
-                  <div className="h-4 bg-gray-200 w-3/4 mb-2" />
-                  <div className="h-4 bg-gray-200 w-1/2" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : news && news.length > 0 ? (
-          <div className="space-y-4">
-            {news.map((article: any, index: number) => (
-              <Card key={index} className="border-2 border-black hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-xl">
-                    <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {article.title}
-                    </a>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-2">{article.description}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(article.publishedAt).toLocaleDateString()} • {article.source.name}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500">No news available for {asset.name}</p>
-        )}
+        <AssetNews
+          news={news || []}
+          isLoading={isLoadingNews}
+          assetName={asset.name}
+        />
       </div>
     </div>
   );

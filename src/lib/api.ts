@@ -25,11 +25,21 @@ export const getAssetMarkets = async (id: string) => {
 };
 
 export const getAssetNews = async (assetName: string) => {
+  if (!NEWS_API_KEY) {
+    console.error('News API key is not configured');
+    return [];
+  }
+
   try {
     const response = await axios.get(
       `${NEWS_API_URL}?q=${encodeURIComponent(assetName + ' cryptocurrency')}&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`
     );
-    return response.data.articles.slice(0, 5);
+    
+    if (response.data.articles && response.data.articles.length > 0) {
+      return response.data.articles.slice(0, 5);
+    }
+    
+    return [];
   } catch (error) {
     console.error('Error fetching news:', error);
     return [];
