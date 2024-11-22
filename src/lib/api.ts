@@ -5,7 +5,7 @@ const NEWS_API_URL = 'https://newsapi.org/v2/everything';
 const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 
 export const getTopAssets = async () => {
-  const response = await axios.get(`${BASE_URL}/assets?limit=50`);
+  const response = await axios.get(`${BASE_URL}/assets?limit=150`);
   return response.data.data;
 };
 
