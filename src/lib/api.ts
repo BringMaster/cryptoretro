@@ -19,9 +19,19 @@ export const getAssetDetails = async (id: string) => {
   return response.data.data;
 };
 
+export const getAssetMarkets = async (id: string) => {
+  const response = await axios.get(`${BASE_URL}/assets/${id}/markets?limit=5`);
+  return response.data.data;
+};
+
 export const getAssetNews = async (assetName: string) => {
-  const response = await axios.get(
-    `${NEWS_API_URL}?q=${assetName} cryptocurrency&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`
-  );
-  return response.data.articles.slice(0, 5); // Get latest 5 news articles
+  try {
+    const response = await axios.get(
+      `${NEWS_API_URL}?q=${encodeURIComponent(assetName + ' cryptocurrency')}&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`
+    );
+    return response.data.articles.slice(0, 5);
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    return [];
+  }
 };

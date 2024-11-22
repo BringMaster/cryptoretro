@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { getAssetDetails, getAssetHistory, getAssetNews } from '@/lib/api';
+import { getAssetDetails, getAssetHistory, getAssetNews, getAssetMarkets } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 const intervals = [
   { label: '24H', value: 'h1' },
@@ -24,6 +25,11 @@ const AssetDetail = () => {
   const { data: history, isLoading: isLoadingHistory } = useQuery({
     queryKey: ['history', id, selectedInterval.value],
     queryFn: () => getAssetHistory(id!, selectedInterval.value),
+  });
+
+  const { data: markets, isLoading: isLoadingMarkets } = useQuery({
+    queryKey: ['markets', id],
+    queryFn: () => getAssetMarkets(id!),
   });
 
   const { data: news, isLoading: isLoadingNews } = useQuery({
@@ -150,6 +156,45 @@ const AssetDetail = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">About {asset.name}</h2>
+          <p className="text-gray-700">
+            {asset.name} ({asset.symbol}) is a cryptocurrency with a current market cap of ${parseFloat(asset.marketCapUsd).toLocaleString('en-US', { maximumFractionDigits: 0 })}. 
+            It has a circulating supply of {parseFloat(asset.supply).toLocaleString('en-US', { maximumFractionDigits: 0 })} {asset.symbol} 
+            and a 24-hour trading volume of ${parseFloat(asset.volumeUsd24Hr).toLocaleString('en-US', { maximumFractionDigits: 0 })}.
+          </p>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">Where to Trade {asset.name}</h2>
+          {isLoadingMarkets ? (
+            <div className="animate-pulse space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-16 bg-gray-200 rounded" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {markets?.map((market: any) => (
+                <Card key={market.exchangeId} className="border-2 border-black">
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold">{market.exchangeId}</h3>
+                        <p className="text-sm text-gray-600">Trading Pair: {market.baseSymbol}/{market.quoteSymbol}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono">${parseFloat(market.priceUsd).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        <p className="text-sm text-gray-600">Volume: ${parseFloat(market.volumeUsd24Hr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
