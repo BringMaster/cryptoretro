@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { getAssetDetails, getAssetHistory } from '@/lib/api';
+import { getAssetDetails, getAssetHistory, getAssetNews } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const intervals = [
   { label: '24H', value: 'h1' },
@@ -23,6 +24,12 @@ const AssetDetail = () => {
   const { data: history, isLoading: isLoadingHistory } = useQuery({
     queryKey: ['history', id, selectedInterval.value],
     queryFn: () => getAssetHistory(id!, selectedInterval.value),
+  });
+
+  const { data: news, isLoading: isLoadingNews } = useQuery({
+    queryKey: ['news', asset?.name],
+    queryFn: () => getAssetNews(asset?.name || ''),
+    enabled: !!asset?.name,
   });
 
   if (isLoadingAsset || isLoadingHistory) {
@@ -144,6 +151,44 @@ const AssetDetail = () => {
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      <div className="brutalist-card p-8">
+        <h2 className="text-3xl font-bold mb-6">Latest News</h2>
+        {isLoadingNews ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 w-3/4 mb-2" />
+                  <div className="h-4 bg-gray-200 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : news && news.length > 0 ? (
+          <div className="space-y-4">
+            {news.map((article: any, index: number) => (
+              <Card key={index} className="border-2 border-black hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="text-xl">
+                    <a href={article.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {article.title}
+                    </a>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 mb-2">{article.description}</p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(article.publishedAt).toLocaleDateString()} • {article.source.name}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500">No news available for {asset.name}</p>
+        )}
       </div>
     </div>
   );
