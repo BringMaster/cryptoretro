@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { getAssetDetails, getAssetHistory, getAssetMarkets } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import AssetMarkets from '@/components/asset/AssetMarkets';
+import { ArrowLeft, CircuitBoard, Signal } from 'lucide-react';
 
 const intervals = [
   { label: '24H', value: 'h1' },
@@ -33,12 +33,8 @@ const AssetDetail = () => {
 
   if (isLoadingAsset || isLoadingHistory) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 w-1/3 rounded" />
-          <div className="h-16 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
-        </div>
+      <div className="container mx-auto p-6 animate-pulse">
+        <div className="cyberpunk-card h-96" />
       </div>
     );
   }
@@ -46,9 +42,9 @@ const AssetDetail = () => {
   if (!asset) {
     return (
       <div className="container mx-auto p-6">
-        <div className="bg-red-50 p-8 rounded-lg border-2 border-red-200">
+        <div className="cyberpunk-card p-8">
           <h1 className="text-2xl font-bold mb-4">Asset Not Found</h1>
-          <Link to="/" className="text-blue-500 hover:underline">
+          <Link to="/" className="cyberpunk-button">
             Back to Home
           </Link>
         </div>
@@ -65,35 +61,40 @@ const AssetDetail = () => {
   const changeFormatted = Math.abs(change).toFixed(2) + '%';
 
   return (
-    <div className="container mx-auto p-6">
-      <Link to="/" className="inline-flex items-center mb-6 text-gray-600 hover:text-gray-900">
-        <span className="mr-2">←</span> Back to Home
+    <div className="container mx-auto p-6 min-h-screen cyberpunk-grid">
+      <Link to="/" className="inline-flex items-center mb-6 text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back to Home
       </Link>
       
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="flex justify-between items-start mb-6 border-b pb-6">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{asset.name}</h1>
-            <p className="text-xl text-gray-600">{asset.symbol}</p>
+      <div className="cyberpunk-card p-6 mb-8">
+        <div className="flex justify-between items-start mb-6 border-b border-secondary/30 pb-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold flex items-center gap-4">
+              <CircuitBoard className="w-8 h-8 text-secondary" />
+              {asset.name}
+              <Signal className="w-8 h-8 text-secondary" />
+            </h1>
+            <p className="text-2xl text-accent">{asset.symbol}</p>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-mono mb-2">{price}</p>
-            <p className={`text-lg ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+            <p className="text-3xl font-mono text-secondary mb-2">{price}</p>
+            <p className={`text-xl ${change >= 0 ? 'price-up' : 'price-down'}`}>
               {change >= 0 ? '↑' : '↓'} {changeFormatted}
             </p>
           </div>
         </div>
 
         <div className="mb-8">
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-4 mb-6">
             {intervals.map((interval) => (
               <button
                 key={interval.value}
                 onClick={() => setSelectedInterval(interval)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
+                className={`px-4 py-2 transition-all ${
                   selectedInterval.value === interval.value
-                    ? 'bg-black text-white'
-                    : 'bg-gray-100 hover:bg-gray-200'
+                    ? 'cyberpunk-button'
+                    : 'text-muted-foreground hover:text-foreground border-2 border-muted hover:border-secondary'
                 }`}
               >
                 {interval.label}
@@ -106,12 +107,19 @@ const AssetDetail = () => {
                 <XAxis
                   dataKey="time"
                   tickFormatter={(time) => new Date(time).toLocaleDateString()}
+                  stroke="#666"
                 />
                 <YAxis
                   domain={['auto', 'auto']}
                   tickFormatter={(value) => `$${value.toLocaleString()}`}
+                  stroke="#666"
                 />
                 <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '2px solid hsl(var(--secondary))',
+                    borderRadius: '4px',
+                  }}
                   formatter={(value: any) =>
                     `$${parseFloat(value).toLocaleString('en-US', {
                       minimumFractionDigits: 2,
@@ -123,7 +131,7 @@ const AssetDetail = () => {
                 <Line
                   type="monotone"
                   dataKey="priceUsd"
-                  stroke="#000000"
+                  stroke="hsl(var(--secondary))"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -133,7 +141,10 @@ const AssetDetail = () => {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Trading Markets</h2>
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+            <Signal className="w-6 h-6 text-secondary" />
+            Trading Markets
+          </h2>
           <AssetMarkets
             markets={markets || []}
             isLoading={isLoadingMarkets}
