@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Network } from "lucide-react";
+import { Network, ExternalLink } from "lucide-react";
 
 interface Exchange {
   exchangeId: string;
@@ -26,7 +26,7 @@ const ExchangeSection = ({ exchanges }: ExchangeSectionProps) => {
     <div className="space-y-4">
       <h2 className="text-2xl font-bold flex items-center gap-2">
         <Network className="w-6 h-6 text-secondary" />
-        Top Exchanges
+        Trading Markets
       </h2>
       <div className="space-y-4">
         {exchanges.map((exchange) => (
@@ -41,9 +41,15 @@ const ExchangeSection = ({ exchanges }: ExchangeSectionProps) => {
               <CardContent className="p-4">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="font-bold text-lg">{exchange.name}</h3>
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      {exchange.name}
+                      <ExternalLink className="w-4 h-4 text-secondary" />
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      Rank #{exchange.rank}
+                      Market Rank #{exchange.rank}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {exchange.tradingPairs} Trading Pairs Available
                     </p>
                   </div>
                   <div className="text-right">
@@ -53,7 +59,10 @@ const ExchangeSection = ({ exchanges }: ExchangeSectionProps) => {
                       })}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {exchange.tradingPairs} pairs
+                      24h Volume
+                    </p>
+                    <p className="text-sm text-accent mt-1">
+                      {parseFloat(exchange.percentTotalVolume).toFixed(2)}% Market Share
                     </p>
                   </div>
                 </div>

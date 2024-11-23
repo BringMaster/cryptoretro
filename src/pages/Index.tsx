@@ -56,7 +56,7 @@ const Index = () => {
           <h1 className="text-4xl md:text-6xl font-bold flex items-center justify-center gap-4">
             <CircuitBoard className="w-12 h-12 text-secondary" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-secondary via-primary to-accent">
-              Crypto Pulse
+              CryptoRetro
             </span>
             <Signal className="w-12 h-12 text-secondary" />
           </h1>
