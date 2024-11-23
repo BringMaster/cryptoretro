@@ -1,9 +1,9 @@
+@import '@fontsource/space-mono';
+@import '@fontsource/jetbrains-mono';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import '@fontsource/space-mono';
-@import '@fontsource/jetbrains-mono';
 
 @layer base {
   :root {
@@ -30,9 +30,42 @@
   }
 }
 
+@layer components {
+  .cyberpunk-text {
+    @apply font-bold tracking-wider;
+    text-shadow: 
+      0 0 5px #fff,
+      0 0 10px #fff,
+      0 0 20px #fff,
+      0 0 40px #0ff,
+      0 0 80px #0ff,
+      0 0 90px #0ff,
+      0 0 100px #0ff,
+      0 0 150px #0ff;
+    animation: flicker 3s infinite alternate;
+  }
+}
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+    text-shadow:
+      0 0 5px #fff,
+      0 0 10px #fff,
+      0 0 20px #fff,
+      0 0 40px #0ff,
+      0 0 80px #0ff,
+      0 0 90px #0ff,
+      0 0 100px #0ff,
+      0 0 150px #0ff;
+  }
+  20%, 22%, 24%, 55% {
+    text-shadow: none;
+  }
+}
+
 @layer base {
   * {
-    @apply border-border;
+    @apply border-[hsl(var(--border))];
   }
   body {
     @apply bg-background text-foreground;
@@ -48,17 +81,17 @@
 
 .cyberpunk-card {
   @apply border-2 border-secondary bg-card/80 backdrop-blur-sm 
-  shadow-[0_0_15px_rgba(0,255,255,0.3)] 
-  hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]
-  transition-all duration-300;
+    shadow-[0_0_15px_rgba(0,255,255,0.3)] 
+    hover:shadow-[0_0_25px_rgba(0,255,255,0.5)]
+    transition-all duration-300;
 }
 
 .cyberpunk-button {
   @apply px-6 py-3 font-bold bg-primary/90 text-primary-foreground
-  border-2 border-accent hover:bg-primary/70
-  shadow-[0_0_10px_rgba(255,0,255,0.3)]
-  hover:shadow-[0_0_20px_rgba(255,0,255,0.5)]
-  transition-all duration-300;
+    border-2 border-accent hover:bg-primary/70
+    shadow-[0_0_10px_rgba(255,0,255,0.3)]
+    hover:shadow-[0_0_20px_rgba(255,0,255,0.5)]
+    transition-all duration-300;
 }
 
 .price-up {
@@ -71,8 +104,8 @@
 
 .cyberpunk-input {
   @apply bg-muted/50 border-2 border-secondary/50 
-  focus:border-secondary focus:ring-1 focus:ring-secondary
-  text-foreground placeholder:text-muted-foreground;
+    focus:border-secondary focus:ring-1 focus:ring-secondary
+    text-foreground placeholder:text-muted-foreground;
 }
 
 .cyberpunk-grid {

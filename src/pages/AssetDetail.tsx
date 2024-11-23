@@ -1,167 +1,151 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getAssetDetails, getAssetHistory, getAssetMarkets } from '@/lib/api';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import AssetMarkets from '@/components/asset/AssetMarkets';
-import { ArrowLeft, CircuitBoard, Signal } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { getAssets, getCoinImageUrl } from '@/lib/api';
+import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
+import AdvancedChart from '@/components/AdvancedChart';
+import NewsSection from '@/components/NewsSection';
+import AssetMarkets from '@/components/AssetMarkets';
+import Spinner from '@/components/Spinner';
 
-const intervals = [
-  { label: '24H', value: 'h1', days: 1 },
-  { label: '7D', value: 'd1', days: 7 },
-  { label: '30D', value: 'd1', days: 30 },
-];
+const AssetDetail: React.FC = () => {
+  const { assetId } = useParams<{ assetId: string }>();
+  const [asset, setAsset] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const AssetDetail = () => {
-  const { id } = useParams();
-  const [selectedInterval, setSelectedInterval] = useState(intervals[0]);
+  useEffect(() => {
+    const fetchAsset = async () => {
+      if (!assetId) return;
+      
+      try {
+        setLoading(true);
+        const assets = await getAssets();
+        const asset = assets.find(a => a.id === assetId);
+        if (!asset) throw new Error('Asset not found');
+        setAsset(asset);
+      } catch (error: any) {
+        console.error('Error fetching asset:', error);
+        setError(error.message || 'Failed to load asset data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const { data: asset, isLoading: isLoadingAsset } = useQuery({
-    queryKey: ['asset', id],
-    queryFn: () => getAssetDetails(id!),
-  });
+    fetchAsset();
+  }, [assetId]);
 
-  const { data: history, isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['history', id, selectedInterval.value, selectedInterval.days],
-    queryFn: () => getAssetHistory(id!, selectedInterval.value),
-    select: (data) => {
-      // Filter data based on selected interval
-      const now = new Date();
-      const startDate = new Date(now.getTime() - (selectedInterval.days * 24 * 60 * 60 * 1000));
-      return data.filter((item: any) => new Date(item.time) >= startDate);
-    }
-  });
-
-  const { data: markets, isLoading: isLoadingMarkets } = useQuery({
-    queryKey: ['markets', id],
-    queryFn: () => getAssetMarkets(id!),
-  });
-
-  if (isLoadingAsset || isLoadingHistory) {
+  if (loading) {
     return (
-      <div className="container mx-auto p-6 animate-pulse">
-        <div className="cyberpunk-card h-96" />
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <Spinner size="lg" className="mb-4" />
+        <p className="text-purple-500 font-medium">Loading asset details...</p>
       </div>
     );
   }
 
-  if (!asset) {
+  if (error || !asset) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="cyberpunk-card p-8">
-          <h1 className="text-2xl font-bold mb-4">Asset Not Found</h1>
-          <Link to="/" className="cyberpunk-button">
-            Back to Home
-          </Link>
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-red-400 text-center">
+          <p>Error loading asset details. Please try again later.</p>
         </div>
       </div>
     );
   }
-
-  const price = parseFloat(asset.priceUsd).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
-
-  const change = parseFloat(asset.changePercent24Hr);
-  const changeFormatted = Math.abs(change).toFixed(2) + '%';
 
   return (
-    <div className="container mx-auto p-6 min-h-screen cyberpunk-grid">
-      <Link to="/" className="inline-flex items-center mb-6 text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Back to Home
-      </Link>
-      
-      <div className="cyberpunk-card p-6 mb-8">
-        <div className="flex justify-between items-start mb-6 border-b border-secondary/30 pb-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold flex items-center gap-4">
-              <CircuitBoard className="w-8 h-8 text-secondary" />
-              {asset.name}
-              <Signal className="w-8 h-8 text-secondary" />
-            </h1>
-            <p className="text-2xl text-accent">{asset.symbol}</p>
+    <div className="container mx-auto px-4 py-8">
+      {/* Asset Header */}
+      <div className="mb-8 bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+        <div className="flex items-start gap-6">
+          {/* Coin Image and Basic Info */}
+          <div className="flex items-center gap-4">
+            <img
+              src={getCoinImageUrl(asset.symbol)[0]}
+              alt={asset.name}
+              className="w-16 h-16 rounded-full"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                const urls = getCoinImageUrl(asset.symbol);
+                const currentIndex = urls.indexOf(target.src);
+                if (currentIndex < urls.length - 1) {
+                  target.src = urls[currentIndex + 1];
+                } else {
+                  target.src = '/placeholder-coin.png';
+                }
+              }}
+            />
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold">{asset.name}</h1>
+                <span className="text-xl text-gray-400">{asset.symbol}</span>
+              </div>
+              <div className="flex items-center gap-4 mt-2">
+                <p className="text-2xl font-mono">{formatPrice(asset.priceUsd)}</p>
+                <span className={`text-sm px-2 py-1 rounded ${
+                  parseFloat(asset.changePercent24Hr) >= 0 
+                    ? 'bg-green-500/10 text-green-400' 
+                    : 'bg-red-500/10 text-red-400'
+                }`}>
+                  {formatPercentage(asset.changePercent24Hr)} (24h)
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-mono text-secondary mb-2">{price}</p>
-            <p className={`text-xl ${change >= 0 ? 'price-up' : 'price-down'}`}>
-              {change >= 0 ? '↑' : '↓'} {changeFormatted}
-            </p>
+
+          {/* Key Metrics */}
+          <div className="flex-1 grid grid-cols-3 gap-6 ml-8 border-l border-gray-800 pl-8">
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Market Cap</p>
+              <p className="text-xl">{formatMarketCap(asset.marketCapUsd)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">24h Volume</p>
+              <p className="text-xl">{formatMarketCap(asset.volumeUsd24Hr)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Supply</p>
+              <p className="text-xl">{formatMarketCap(asset.supply)} {asset.symbol}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Max Supply</p>
+              <p className="text-xl">{asset.maxSupply ? formatMarketCap(asset.maxSupply) : 'Unlimited'} {asset.symbol}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Circulating Supply</p>
+              <p className="text-xl">{formatMarketCap(asset.supply)} {asset.symbol}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Supply %</p>
+              <p className="text-xl">
+                {asset.maxSupply 
+                  ? formatPercentage((parseFloat(asset.supply) / parseFloat(asset.maxSupply) * 100).toString())
+                  : 'N/A'}
+              </p>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="mb-8">
-          <div className="flex gap-4 mb-6">
-            {intervals.map((interval) => (
-              <button
-                key={`${interval.value}-${interval.days}`}
-                onClick={() => setSelectedInterval(interval)}
-                className={`px-4 py-2 transition-all ${
-                  selectedInterval.value === interval.value && selectedInterval.days === interval.days
-                    ? 'cyberpunk-button'
-                    : 'text-muted-foreground hover:text-foreground border-2 border-muted hover:border-secondary'
-                }`}
-              >
-                {interval.label}
-              </button>
-            ))}
-          </div>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={history}>
-                <XAxis
-                  dataKey="time"
-                  tickFormatter={(time) => {
-                    const date = new Date(time);
-                    return selectedInterval.value === 'h1' 
-                      ? date.toLocaleTimeString() 
-                      : date.toLocaleDateString();
-                  }}
-                  stroke="#666"
-                />
-                <YAxis
-                  domain={['auto', 'auto']}
-                  tickFormatter={(value) => `$${value.toLocaleString()}`}
-                  stroke="#666"
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '2px solid hsl(var(--secondary))',
-                    borderRadius: '4px',
-                  }}
-                  formatter={(value: any) =>
-                    `$${parseFloat(value).toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  }
-                  labelFormatter={(label) => new Date(label).toLocaleString()}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="priceUsd"
-                  stroke="hsl(var(--secondary))"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Signal className="w-6 h-6 text-secondary" />
-            Trading Markets
-          </h2>
-          <AssetMarkets
-            markets={markets || []}
-            isLoading={isLoadingMarkets}
-            assetName={asset.name}
+      {/* Chart and News Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="lg:col-span-2 bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+          <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
+          <AdvancedChart 
+            assetId={assetId || ''} 
+            assetName={asset?.name || ''} 
+            changePercent24Hr={parseFloat(asset?.changePercent24Hr || '0')} 
           />
         </div>
+        <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+          <NewsSection assetName={asset.name} assetSymbol={asset.symbol} />
+        </div>
+      </div>
+
+      {/* Markets */}
+      <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+        <h2 className="text-xl font-semibold mb-6">Markets</h2>
+        <AssetMarkets assetId={assetId || ''} />
       </div>
     </div>
   );

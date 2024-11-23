@@ -1,115 +1,284 @@
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { getTopAssets, getCryptoNews, getExchanges } from '@/lib/api';
-import AssetCard from '@/components/AssetCard';
-import { Input } from '@/components/ui/input';
-import { CircuitBoard, Search, Signal } from 'lucide-react';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import NewsSection from '@/components/NewsSection';
-import ExchangeSection from '@/components/ExchangeSection';
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getAssets } from '@/lib/api';
+import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
+import MiniChart from '@/components/MiniChart';
+import FilterBar, { FilterOptions } from '@/components/FilterBar';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import Pagination from '@/components/Pagination';
+import Spinner from '@/components/Spinner';
+import WatchlistButton from '@/components/WatchlistButton';
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
+import { getCoinImageUrl } from '@/lib/api';
+import { memo } from 'react';
+
+interface Asset {
+  id: string;
+  rank: string;
+  symbol: string;
+  name: string;
+  priceUsd: string;
+  marketCapUsd: string;
+  volumeUsd24Hr: string;
+  changePercent24Hr: string;
+}
+
+const defaultFilters: FilterOptions = {
+  search: '',
+  sortBy: 'rank',
+  sortDirection: 'asc',
+  minPrice: '',
+  maxPrice: '',
+  minMarketCap: '',
+  maxMarketCap: '',
+  pageSize: 25
+};
+
+// Memoize child components to prevent unnecessary re-renders
+const MemoizedMiniChart = memo(MiniChart);
+const MemoizedWatchlistButton = memo(WatchlistButton);
 
 const Index = () => {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  const navigate = useNavigate();
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterOptions>(defaultFilters);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const { data: assetsData, isLoading: isLoadingAssets } = useQuery({
-    queryKey: ['assets', page, search],
-    queryFn: () => getTopAssets(page, search),
-  });
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  const { data: news } = useQuery({
-    queryKey: ['news'],
-    queryFn: getCryptoNews,
-  });
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        setLoading(true);
+        const data = await getAssets();
+        setAssets(data);
+        setFilteredAssets(data);
+      } catch (error) {
+        console.error('Error fetching assets:', error);
+        setError('Failed to load cryptocurrency data');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const { data: exchanges } = useQuery({
-    queryKey: ['exchanges'],
-    queryFn: getExchanges,
-  });
+    // Initial fetch
+    fetchAssets();
 
-  const assets = assetsData?.data || [];
-  const totalPages = Math.ceil((assetsData?.info?.total || 0) / 20);
+    // Set up periodic updates every 30 seconds
+    const updateInterval = setInterval(async () => {
+      try {
+        const data = await getAssets();
+        setAssets(data);
+        setFilteredAssets(prevFiltered => {
+          // Preserve current filtering while updating data
+          const updatedAssets = [...data];
+          return applyFilters(updatedAssets, filters);
+        });
+      } catch (error) {
+        console.error('Error updating assets:', error);
+      }
+    }, 30000); // 30 seconds
 
-  if (isLoadingAssets) {
+    // Cleanup interval on component unmount
+    return () => clearInterval(updateInterval);
+  }, []);
+
+  // Optimize asset filtering with useCallback
+  const applyFilters = useCallback((assets: Asset[], filters: FilterOptions) => {
+    let result = [...assets];
+    
+    // Apply search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      result = result.filter(asset => 
+        asset.name.toLowerCase().includes(searchTerm) || 
+        asset.symbol.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Apply price filters
+    if (filters.minPrice) {
+      const minPrice = parseFloat(filters.minPrice);
+      result = result.filter(asset => parseFloat(asset.priceUsd) >= minPrice);
+    }
+    if (filters.maxPrice) {
+      const maxPrice = parseFloat(filters.maxPrice);
+      result = result.filter(asset => parseFloat(asset.priceUsd) <= maxPrice);
+    }
+
+    // Apply market cap filters
+    if (filters.minMarketCap) {
+      const minMarketCap = parseFloat(filters.minMarketCap);
+      result = result.filter(asset => parseFloat(asset.marketCapUsd) >= minMarketCap);
+    }
+    if (filters.maxMarketCap) {
+      const maxMarketCap = parseFloat(filters.maxMarketCap);
+      result = result.filter(asset => parseFloat(asset.marketCapUsd) <= maxMarketCap);
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      const aValue = parseFloat(a[filters.sortBy]);
+      const bValue = parseFloat(b[filters.sortBy]);
+      return filters.sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return result;
+  }, []);
+
+  useEffect(() => {
+    setFilteredAssets(applyFilters(assets, filters));
+  }, [assets, filters, applyFilters]);
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+  };
+
+  const handleFilterReset = () => {
+    setFilters(defaultFilters);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredAssets.length / filters.pageSize);
+  const startIndex = (currentPage - 1) * filters.pageSize;
+  const endIndex = startIndex + filters.pageSize;
+  const currentAssets = filteredAssets.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  if (loading) {
     return (
-      <div className="container mx-auto p-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="cyberpunk-card h-48" />
-          ))}
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[400px] py-8">
+        <Spinner size="lg" className="mb-4" />
+        <p className="text-purple-500 text-lg font-medium">Loading asset data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-400 text-center py-8">
+        {error}
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 min-h-screen cyberpunk-grid">
-      <div className="flex flex-col gap-8">
-        <header className="text-center space-y-4">
-          <h1 className="text-4xl md:text-6xl font-bold flex items-center justify-center gap-4">
-            <CircuitBoard className="w-12 h-12 text-secondary" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-secondary via-primary to-accent">
-              CryptoRetro
-            </span>
-            <Signal className="w-12 h-12 text-secondary" />
-          </h1>
-          <div className="max-w-md mx-auto relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search cryptocurrencies..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="cyberpunk-input pl-10"
-            />
-          </div>
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {assets.map((asset: any) => (
-            <AssetCard key={asset.id} {...asset} />
-          ))}
-        </div>
-
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious 
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-              />
-            </PaginationItem>
-            {[...Array(Math.min(5, totalPages))].map((_, i) => (
-              <PaginationItem key={i}>
-                <PaginationLink
-                  onClick={() => setPage(i + 1)}
-                  isActive={page === i + 1}
-                >
-                  {i + 1}
-                </PaginationLink>
-              </PaginationItem>
-            ))}
-            <PaginationItem>
-              <PaginationNext 
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <NewsSection news={news || []} />
-          <ExchangeSection exchanges={exchanges || []} />
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <ErrorBoundary>
+          <FilterBar
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onReset={handleFilterReset}
+          />
+        </ErrorBoundary>
       </div>
+
+      <div className="overflow-x-auto bg-[#1E1E1E] rounded-lg shadow-lg mb-8">
+        <table className="min-w-full divide-y divide-gray-700">
+          <thead>
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rank</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Price</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">24h %</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Market Cap</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Volume (24h)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Chart</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-700">
+            {currentAssets.map((asset) => (
+              <tr
+                key={asset.id}
+                className="hover:bg-[#2a2a2a] transition-colors cursor-pointer"
+                onClick={() => navigate(`/asset/${asset.id}`)}
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm text-gray-300">{asset.rank}</span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <img
+                      src={getCoinImageUrl(asset.symbol)[0]}
+                      alt={`${asset.name} logo`}
+                      className="w-8 h-8 rounded-full mr-3"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        const urls = getCoinImageUrl(asset.symbol);
+                        const currentIndex = urls.indexOf(target.src);
+                        if (currentIndex < urls.length - 1) {
+                          target.src = urls[currentIndex + 1];
+                        } else {
+                          // If all URLs fail, use a default placeholder
+                          target.src = '/assets/placeholder-coin.png';
+                          target.onerror = null; // Prevent infinite loop
+                        }
+                      }}
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-gray-100">{asset.name}</div>
+                      <div className="text-sm text-gray-400">{asset.symbol}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-100 font-mono">{formatPrice(asset.priceUsd)}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className={`text-sm ${parseFloat(asset.changePercent24Hr) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {formatPercentage(asset.changePercent24Hr)}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-100">{formatMarketCap(asset.marketCapUsd)}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-100">{formatMarketCap(asset.volumeUsd24Hr)}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="w-32 h-16">
+                    <MemoizedMiniChart
+                      assetId={asset.id}
+                      changePercent24Hr={parseFloat(asset.changePercent24Hr)}
+                    />
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <MemoizedWatchlistButton assetId={asset.id} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
     </div>
   );
 };

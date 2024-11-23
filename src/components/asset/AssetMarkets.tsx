@@ -1,4 +1,15 @@
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from 'react';
+import { getAssetMarkets } from '@/lib/api';
+import { getExchangeUrl } from '@/lib/exchange-urls';
+import { ExternalLink } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface Market {
   exchangeId: string;
@@ -6,87 +17,129 @@ interface Market {
   quoteSymbol: string;
   priceUsd: string;
   volumeUsd24Hr: string;
-  exchangeUrl: string;
+  volumePercent: string;
+  source?: string;
 }
 
 interface AssetMarketsProps {
-  markets: Market[];
-  isLoading: boolean;
-  assetName: string;
+  assetId: string;
 }
 
-const AssetMarkets = ({ markets, isLoading, assetName }: AssetMarketsProps) => {
-  if (isLoading) {
+const formatPrice = (price: string) => {
+  const numPrice = parseFloat(price);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    notation: numPrice > 1e9 ? 'compact' : 'standard'
+  }).format(numPrice);
+};
+
+const formatVolume = (volume: string) => {
+  const numVolume = parseFloat(volume);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    notation: 'compact'
+  }).format(numVolume);
+};
+
+const formatPercent = (percent: string) => {
+  const num = parseFloat(percent);
+  return `${num.toFixed(2)}%`;
+};
+
+const AssetMarkets = ({ assetId }: AssetMarketsProps) => {
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMarkets = async () => {
+      setLoading(true);
+      try {
+        const data = await getAssetMarkets(assetId);
+        setMarkets(data as Market[]);
+      } catch (error) {
+        console.error('Error fetching markets:', error);
+        setError('Failed to load market data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMarkets();
+  }, [assetId]);
+
+  if (loading) {
     return (
-      <div className="animate-pulse space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-16 bg-gray-100 rounded-lg" />
-        ))}
+      <div className="flex justify-center items-center h-48">
+        <div className="animate-pulse text-purple-500">Loading markets...</div>
       </div>
     );
   }
 
-  // Remove duplicate markets by exchangeId
-  const uniqueMarkets = markets.reduce((acc: Market[], current) => {
-    const exists = acc.find(market => market.exchangeId === current.exchangeId);
-    if (!exists) {
-      acc.push(current);
-    }
-    return acc;
-  }, []);
+  if (error) {
+    return (
+      <div className="text-center text-red-500 py-8">
+        {error}
+      </div>
+    );
+  }
+
+  if (markets.length === 0) {
+    return (
+      <div className="text-center text-gray-400 py-8">
+        No market data available
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {uniqueMarkets.map((market) => {
-        // Generate exchange-specific URLs
-        let tradingUrl = market.exchangeUrl;
-        if (!tradingUrl) {
-          switch (market.exchangeId.toLowerCase()) {
-            case 'binance':
-              tradingUrl = `https://www.binance.com/en/trade/${market.baseSymbol}_${market.quoteSymbol}`;
-              break;
-            case 'coinbase':
-              tradingUrl = `https://www.coinbase.com/advanced-trade/${market.baseSymbol}-${market.quoteSymbol}`;
-              break;
-            case 'kraken':
-              tradingUrl = `https://trade.kraken.com/charts/${market.baseSymbol}${market.quoteSymbol}`;
-              break;
-            default:
-              tradingUrl = `https://www.${market.exchangeId.toLowerCase()}.com/trade/${market.baseSymbol}-${market.quoteSymbol}`;
-          }
-        }
-
-        return (
-          <a
-            key={`${market.exchangeId}-${market.baseSymbol}-${market.quoteSymbol}`}
-            href={tradingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block transition-transform hover:scale-[1.02]"
-          >
-            <Card className="border border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700">
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-bold text-lg">{market.exchangeId}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {market.baseSymbol}/{market.quoteSymbol}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-lg text-secondary">
-                      ${parseFloat(market.priceUsd).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      24h Vol: ${parseFloat(market.volumeUsd24Hr).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </a>
-        );
-      })}
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="text-left">Exchange</TableHead>
+            <TableHead className="text-left">Pair</TableHead>
+            <TableHead className="text-right">Price</TableHead>
+            <TableHead className="text-right">Volume (24h)</TableHead>
+            <TableHead className="text-right">Market Share</TableHead>
+            <TableHead className="text-right">Trade</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {markets.map((market) => (
+            <TableRow key={`${market.exchangeId}-${market.baseSymbol}-${market.quoteSymbol}`}>
+              <TableCell className="font-medium">{market.exchangeId}</TableCell>
+              <TableCell>{market.baseSymbol}/{market.quoteSymbol}</TableCell>
+              <TableCell className="text-right font-mono">
+                {formatPrice(market.priceUsd)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatVolume(market.volumeUsd24Hr)}
+              </TableCell>
+              <TableCell className="text-right font-mono">
+                {formatPercent(market.volumePercent)}
+              </TableCell>
+              <TableCell className="text-right">
+                <a
+                  href={getExchangeUrl(market.exchangeId, market.baseSymbol, market.quoteSymbol)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center text-purple-400 hover:text-purple-300 transition-colors"
+                >
+                  Trade
+                  <ExternalLink className="ml-1 w-4 h-4" />
+                </a>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

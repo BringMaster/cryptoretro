@@ -1,0 +1,170 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+ 
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --popover: 224 71% 4%;
+    --popover-foreground: 215 20.2% 65.1%;
+ 
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
+ 
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+ 
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --ring: 216 34% 17%;
+ 
+    --radius: 0.5rem;
+
+    /* Custom Cyberpunk Colors */
+    --neon-pink: 326 100% 74%;
+    --neon-blue: 191 98% 77%;
+    --neon-purple: 284 100% 77%;
+    --cyber-yellow: 47 95% 57%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom Animations */
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 2px hsl(var(--neon-blue))) drop-shadow(0 0 4px hsl(var(--neon-blue))); }
+  50% { filter: drop-shadow(0 0 6px hsl(var(--neon-blue))) drop-shadow(0 0 8px hsl(var(--neon-blue))); }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% { opacity: 1; }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% { opacity: 0.4; }
+}
+
+/* Custom Classes */
+.cyber-gradient {
+  background: linear-gradient(135deg, 
+    hsla(var(--neon-blue), 0.2),
+    hsla(var(--neon-purple), 0.2),
+    hsla(var(--neon-pink), 0.2)
+  );
+}
+
+.cyber-grid {
+  background-image: 
+    linear-gradient(hsla(var(--neon-blue), 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, hsla(var(--neon-blue), 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.cyber-text {
+  font-family: 'Share Tech Mono', monospace;
+  text-shadow: 0 0 5px hsla(var(--neon-blue), 0.5);
+}
+
+.cyber-heading {
+  font-family: 'Orbitron', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.cyber-card {
+  background: hsla(var(--card), 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid hsla(var(--neon-blue), 0.2);
+  box-shadow: 0 0 20px hsla(var(--neon-blue), 0.1);
+  transition: all 0.3s ease;
+}
+
+.cyber-card:hover {
+  border-color: hsla(var(--neon-blue), 0.4);
+  box-shadow: 0 0 30px hsla(var(--neon-blue), 0.2);
+}
+
+.cyber-button {
+  position: relative;
+  background: transparent;
+  border: 1px solid hsla(var(--neon-blue), 0.5);
+  color: hsl(var(--foreground));
+  font-family: 'Share Tech Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0.5rem 1rem;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.cyber-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsla(var(--neon-blue), 0.2),
+    transparent
+  );
+  transition: 0.5s;
+}
+
+.cyber-button:hover::before {
+  left: 100%;
+}
+
+.cyber-button:hover {
+  border-color: hsla(var(--neon-blue), 1);
+  box-shadow: 0 0 10px hsla(var(--neon-blue), 0.5);
+}
+
+/* Scanline effect */
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.scanline::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: hsla(var(--neon-blue), 0.1);
+  animation: scanline 6s linear infinite;
+}

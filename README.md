@@ -1,69 +1,110 @@
-# Welcome to your Lovable project
+# CryptoRetro
 
-## Project info
+A modern, dark-themed cryptocurrency tracking platform with real-time market data, interactive charts, and crypto-specific news, built with React and TypeScript.
 
-**URL**: https://lovable.dev/projects/8a902869-fad1-4ebe-8ea0-a82a4a213475
+## Features
 
-## How can I edit this code?
+- Real-time cryptocurrency price tracking
+- Interactive TradingView price charts
+- Asset-specific news integration with CryptoCompare
+- Comprehensive market data from multiple exchanges
+- Dark-themed UI with modern components
+- Fully responsive design for all devices
 
-There are several ways of editing your application.
+## Tech Stack
 
-**Use Lovable**
+- **Frontend Framework**: React 18
+- **Build Tool**: Vite
+- **Language**: TypeScript
+- **UI Components**: shadcn-ui
+- **Styling**: Tailwind CSS with dark theme
+- **State Management**: React Query
+- **Charts**: TradingView Advanced Charts
+- **Form Handling**: React Hook Form
+- **Data Validation**: Zod
+- **HTTP Client**: Axios
+- **Routing**: React Router DOM
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/8a902869-fad1-4ebe-8ea0-a82a4a213475) and start prompting.
+## APIs Used
 
-Changes made via Lovable will be committed automatically to this repo.
+- CoinCap API - Real-time cryptocurrency data
+- CryptoCompare API - News and additional market data
+- TradingView Charts - Advanced charting capabilities
 
-**Use your preferred IDE**
+## Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js (v18+ recommended)
+- npm or yarn package manager
+- CryptoCompare API key (for news integration)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Environment Setup
 
-Follow these steps:
+Create a `.env` file in the root directory with the following:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```env
+VITE_CRYPTOCOMPARE_API_KEY=your_cryptocompare_api_key_here
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Installation
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. Clone the repository
+2. Install dependencies:
+```bash
+npm install
+```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Features in Detail
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Asset Detail Page
+- Comprehensive asset metrics (price, market cap, volume, supply)
+- Real-time price updates
+- TradingView Advanced Charts integration
+- Top 5 latest news articles
+- Top 10 markets by volume
+- Direct trading links to exchanges
 
-**Use GitHub Codespaces**
+### Market Data
+- Support for 25+ major exchanges including:
+  - Binance
+  - Coinbase
+  - Kraken
+  - KuCoin
+  - Crypto.com
+  - Gate.io
+  - Huobi
+  - OKX
+  - Bybit
+  - AscendEX
+- Real-time market prices and volumes
+- Direct trading links
+- Volume percentage analysis
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### News Integration
+- Asset-specific news from CryptoCompare
+- Latest 5 articles per asset
+- Time-ago timestamps
+- Direct links to news sources
 
-## What technologies are used for this project?
+## Contributing
 
-This project is built with .
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## License
 
-## How can I deploy this project?
+MIT License - feel free to use this project for your own purposes.
 
-Simply open [Lovable](https://lovable.dev/projects/8a902869-fad1-4ebe-8ea0-a82a4a213475) and click on Share -> Publish.
+## Acknowledgments
 
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+- Built with shadcn-ui components
+- Powered by CoinCap API
+- News provided by CryptoCompare
+- Charts powered by TradingView
