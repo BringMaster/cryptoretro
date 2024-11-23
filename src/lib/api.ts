@@ -53,3 +53,20 @@ export const getExchanges = async () => {
   const response = await axios.get(`${BASE_URL}/exchanges?limit=10`);
   return response.data.data;
 };
+
+export const getAssetNews = async (assetName: string) => {
+  if (!NEWS_API_KEY) {
+    console.error('News API key is not configured');
+    return [];
+  }
+
+  try {
+    const response = await axios.get(
+      `${NEWS_API_URL}?q=${encodeURIComponent(assetName)}&sortBy=publishedAt&language=en&apiKey=${NEWS_API_KEY}`
+    );
+    return response.data.articles.slice(0, 6);
+  } catch (error) {
+    console.error('Error fetching asset news:', error);
+    return [];
+  }
+};
