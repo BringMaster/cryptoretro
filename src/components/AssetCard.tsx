@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Microchip } from 'lucide-react';
 
 interface AssetCardProps {
   id: string;
@@ -20,14 +21,17 @@ const AssetCard = ({ id, rank, symbol, name, priceUsd, changePercent24Hr }: Asse
 
   return (
     <Link to={`/asset/${id}`}>
-      <div className="brutalist-card p-6 cursor-pointer">
+      <div className="cyberpunk-card p-6 cursor-pointer group">
         <div className="flex justify-between items-start mb-4">
-          <span className="text-xl font-bold">#{rank}</span>
-          <span className="text-2xl font-bold">{symbol}</span>
+          <span className="text-xl font-bold flex items-center gap-2">
+            <Microchip className="w-5 h-5 text-secondary group-hover:animate-pulse" />
+            #{rank}
+          </span>
+          <span className="text-2xl font-bold text-accent">{symbol}</span>
         </div>
         <h3 className="text-xl mb-4 font-bold truncate">{name}</h3>
         <div className="text-right">
-          <p className="text-xl font-mono mb-2">{price}</p>
+          <p className="text-xl font-mono mb-2 text-secondary">{price}</p>
           <p className={change >= 0 ? 'price-up' : 'price-down'}>
             {change >= 0 ? '↑' : '↓'} {changeFormatted}
           </p>
