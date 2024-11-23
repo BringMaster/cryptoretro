@@ -2,11 +2,9 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { getAssetDetails, getAssetHistory, getAssetNews, getAssetMarkets } from '@/lib/api';
+import { getAssetDetails, getAssetHistory, getAssetMarkets } from '@/lib/api';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent } from '@/components/ui/card';
 import AssetMarkets from '@/components/asset/AssetMarkets';
-import AssetNews from '@/components/asset/AssetNews';
 
 const intervals = [
   { label: '24H', value: 'h1' },
@@ -33,19 +31,13 @@ const AssetDetail = () => {
     queryFn: () => getAssetMarkets(id!),
   });
 
-  const { data: news, isLoading: isLoadingNews } = useQuery({
-    queryKey: ['news', asset?.name],
-    queryFn: () => getAssetNews(asset?.name || ''),
-    enabled: !!asset?.name,
-  });
-
   if (isLoadingAsset || isLoadingHistory) {
     return (
       <div className="container mx-auto p-6">
-        <div className="brutalist-card p-8 animate-pulse">
-          <div className="h-8 bg-gray-200 mb-4 w-1/3" />
-          <div className="h-16 bg-gray-200 mb-8" />
-          <div className="h-64 bg-gray-200" />
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 w-1/3 rounded" />
+          <div className="h-16 bg-gray-200 rounded" />
+          <div className="h-64 bg-gray-200 rounded" />
         </div>
       </div>
     );
@@ -54,9 +46,9 @@ const AssetDetail = () => {
   if (!asset) {
     return (
       <div className="container mx-auto p-6">
-        <div className="brutalist-card p-8 bg-red-50">
-          <h1 className="text-4xl font-bold mb-4">Asset Not Found</h1>
-          <Link to="/" className="brutalist-button inline-block">
+        <div className="bg-red-50 p-8 rounded-lg border-2 border-red-200">
+          <h1 className="text-2xl font-bold mb-4">Asset Not Found</h1>
+          <Link to="/" className="text-blue-500 hover:underline">
             Back to Home
           </Link>
         </div>
@@ -74,53 +66,34 @@ const AssetDetail = () => {
 
   return (
     <div className="container mx-auto p-6">
-      <Link to="/" className="brutalist-button inline-block mb-6">
-        ← Back
+      <Link to="/" className="inline-flex items-center mb-6 text-gray-600 hover:text-gray-900">
+        <span className="mr-2">←</span> Back to Home
       </Link>
       
-      <div className="brutalist-card p-8 mb-6">
-        <div className="flex justify-between items-start mb-8">
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div className="flex justify-between items-start mb-6 border-b pb-6">
           <div>
-            <h1 className="text-4xl font-bold mb-2">{asset.name}</h1>
-            <p className="text-2xl">{asset.symbol}</p>
+            <h1 className="text-3xl font-bold mb-2">{asset.name}</h1>
+            <p className="text-xl text-gray-600">{asset.symbol}</p>
           </div>
           <div className="text-right">
-            <p className="text-3xl font-mono mb-2">{price}</p>
-            <p className={`text-xl ${change >= 0 ? 'price-up' : 'price-down'}`}>
+            <p className="text-2xl font-mono mb-2">{price}</p>
+            <p className={`text-lg ${change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
               {change >= 0 ? '↑' : '↓'} {changeFormatted}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="brutalist-card p-4">
-            <p className="text-sm mb-1">Market Cap</p>
-            <p className="text-xl font-mono">
-              ${parseFloat(asset.marketCapUsd).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-          <div className="brutalist-card p-4">
-            <p className="text-sm mb-1">Volume (24Hr)</p>
-            <p className="text-xl font-mono">
-              ${parseFloat(asset.volumeUsd24Hr).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-          <div className="brutalist-card p-4">
-            <p className="text-sm mb-1">Supply</p>
-            <p className="text-xl font-mono">
-              {parseFloat(asset.supply).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-6">
+        <div className="mb-8">
           <div className="flex gap-4 mb-4">
             {intervals.map((interval) => (
               <button
                 key={interval.value}
                 onClick={() => setSelectedInterval(interval)}
-                className={`brutalist-button ${
-                  selectedInterval.value === interval.value ? 'bg-black text-white' : ''
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  selectedInterval.value === interval.value
+                    ? 'bg-black text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
                 {interval.label}
@@ -160,31 +133,13 @@ const AssetDetail = () => {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">About {asset.name}</h2>
-          <p className="text-gray-700">
-            {asset.name} ({asset.symbol}) is a cryptocurrency with a current market cap of ${parseFloat(asset.marketCapUsd).toLocaleString('en-US', { maximumFractionDigits: 0 })}. 
-            It has a circulating supply of {parseFloat(asset.supply).toLocaleString('en-US', { maximumFractionDigits: 0 })} {asset.symbol} 
-            and a 24-hour trading volume of ${parseFloat(asset.volumeUsd24Hr).toLocaleString('en-US', { maximumFractionDigits: 0 })}.
-          </p>
-        </div>
-
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-4">Where to Trade {asset.name}</h2>
+          <h2 className="text-2xl font-bold mb-4">Trading Markets</h2>
           <AssetMarkets
             markets={markets || []}
             isLoading={isLoadingMarkets}
             assetName={asset.name}
           />
         </div>
-      </div>
-
-      <div className="brutalist-card p-8">
-        <h2 className="text-3xl font-bold mb-6">Latest News</h2>
-        <AssetNews
-          news={news || []}
-          isLoading={isLoadingNews}
-          assetName={asset.name}
-        />
       </div>
     </div>
   );

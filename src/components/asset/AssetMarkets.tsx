@@ -20,7 +20,7 @@ const AssetMarkets = ({ markets, isLoading, assetName }: AssetMarketsProps) => {
     return (
       <div className="animate-pulse space-y-4">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-16 bg-gray-200 rounded" />
+          <div key={i} className="h-16 bg-gray-100 rounded-lg" />
         ))}
       </div>
     );
@@ -34,23 +34,23 @@ const AssetMarkets = ({ markets, isLoading, assetName }: AssetMarketsProps) => {
           href={`https://www.${market.exchangeId.toLowerCase()}.com/trade/${market.baseSymbol}-${market.quoteSymbol}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="block hover:scale-[1.02] transition-transform"
+          className="block transition-transform hover:scale-[1.02]"
         >
-          <Card className="border-2 border-black">
+          <Card className="border border-gray-200 hover:border-gray-300">
             <CardContent className="p-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="font-bold">{market.exchangeId}</h3>
+                  <h3 className="font-bold text-lg">{market.exchangeId}</h3>
                   <p className="text-sm text-gray-600">
-                    Trading Pair: {market.baseSymbol}/{market.quoteSymbol}
+                    {market.baseSymbol}/{market.quoteSymbol}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono">
+                  <p className="font-mono text-lg">
                     ${parseFloat(market.priceUsd).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Volume: ${parseFloat(market.volumeUsd24Hr).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    24h Vol: ${parseFloat(market.volumeUsd24Hr).toLocaleString("en-US", { maximumFractionDigits: 0 })}
                   </p>
                 </div>
               </div>
