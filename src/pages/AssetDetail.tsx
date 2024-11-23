@@ -7,9 +7,9 @@ import AssetMarkets from '@/components/asset/AssetMarkets';
 import { ArrowLeft, CircuitBoard, Signal } from 'lucide-react';
 
 const intervals = [
-  { label: '24H', value: 'h1' },
-  { label: '7D', value: 'd1' },
-  { label: '30D', value: 'd1' },
+  { label: '24H', value: 'h1', days: 1 },
+  { label: '7D', value: 'd1', days: 7 },
+  { label: '30D', value: 'd1', days: 30 },
 ];
 
 const AssetDetail = () => {
@@ -22,8 +22,14 @@ const AssetDetail = () => {
   });
 
   const { data: history, isLoading: isLoadingHistory } = useQuery({
-    queryKey: ['history', id, selectedInterval.value],
+    queryKey: ['history', id, selectedInterval.value, selectedInterval.days],
     queryFn: () => getAssetHistory(id!, selectedInterval.value),
+    select: (data) => {
+      // Filter data based on selected interval
+      const now = new Date();
+      const startDate = new Date(now.getTime() - (selectedInterval.days * 24 * 60 * 60 * 1000));
+      return data.filter((item: any) => new Date(item.time) >= startDate);
+    }
   });
 
   const { data: markets, isLoading: isLoadingMarkets } = useQuery({
@@ -89,10 +95,10 @@ const AssetDetail = () => {
           <div className="flex gap-4 mb-6">
             {intervals.map((interval) => (
               <button
-                key={interval.value}
+                key={`${interval.value}-${interval.days}`}
                 onClick={() => setSelectedInterval(interval)}
                 className={`px-4 py-2 transition-all ${
-                  selectedInterval.value === interval.value
+                  selectedInterval.value === interval.value && selectedInterval.days === interval.days
                     ? 'cyberpunk-button'
                     : 'text-muted-foreground hover:text-foreground border-2 border-muted hover:border-secondary'
                 }`}
@@ -106,7 +112,12 @@ const AssetDetail = () => {
               <LineChart data={history}>
                 <XAxis
                   dataKey="time"
-                  tickFormatter={(time) => new Date(time).toLocaleDateString()}
+                  tickFormatter={(time) => {
+                    const date = new Date(time);
+                    return selectedInterval.value === 'h1' 
+                      ? date.toLocaleTimeString() 
+                      : date.toLocaleDateString();
+                  }}
                   stroke="#666"
                 />
                 <YAxis
