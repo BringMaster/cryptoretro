@@ -1,12 +1,25 @@
+import { Suspense, lazy } from 'react';
 import { ClerkProvider } from '@/providers/ClerkProvider';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiConfig } from "wagmi";
 import { config } from "./lib/wagmi";
 import Header from "./components/Header";
-import Index from "./pages/Index";
-import AssetDetail from "./pages/AssetDetail";
-import Watchlist from "./pages/watchlist";
+import Spinner from "./components/Spinner";
+
+// Lazy load all major routes
+const Index = lazy(() => import("./pages/Index"));
+const AssetDetail = lazy(() => import("./pages/AssetDetail"));
+const Watchlist = lazy(() => import("./pages/watchlist"));
+const News = lazy(() => import("./pages/News"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex flex-col items-center justify-center min-h-[60vh]">
+    <Spinner size="lg" className="mb-4" />
+    <p className="text-purple-500 font-medium">Loading page...</p>
+  </div>
+);
 
 // Create a client
 const queryClient = new QueryClient({
@@ -23,16 +36,19 @@ function App() {
     <WagmiConfig config={config}>
       <ClerkProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
+          <Router>
             <div className="min-h-screen bg-[#121212] text-white">
               <Header />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/asset/:assetId" element={<AssetDetail />} />
-                <Route path="/watchlist" element={<Watchlist />} />
-              </Routes>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/asset/:assetId" element={<AssetDetail />} />
+                  <Route path="/news" element={<News />} />
+                  <Route path="/watchlist" element={<Watchlist />} />
+                </Routes>
+              </Suspense>
             </div>
-          </BrowserRouter>
+          </Router>
         </QueryClientProvider>
       </ClerkProvider>
     </WagmiConfig>

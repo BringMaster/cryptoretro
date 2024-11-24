@@ -3,7 +3,7 @@ import pThrottle from 'p-throttle';
 import { cacheService } from './cache';
 
 const COINCAP_API = '/api/coincap';
-const CRYPTOCOMPARE_API = 'https://min-api.cryptocompare.com/data/v2';
+const CRYPTOCOMPARE_API = 'https://min-api.cryptocompare.com/data';
 const CRYPTOCOMPARE_API_KEY = import.meta.env.VITE_CRYPTOCOMPARE_API_KEY;
 const COINCAP_KEY = import.meta.env.VITE_COINCAP_API_KEY;
 
@@ -58,6 +58,40 @@ const throttledRequest = throttle(async (config: any) => {
 const cache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
+export interface NewsParams {
+  page?: number;
+  limit?: number;
+  categories?: string;
+  assetSymbol?: string;
+}
+
+// News API endpoints
+const NEWS_APIS = {
+  CRYPTOCOMPARE: `${CRYPTOCOMPARE_API}/v2/news/`,
+  CRYPTOPANIC: 'https://cryptopanic.com/api/v1/posts',
+  COINPAPRIKA: 'https://api.coinpaprika.com/v1/news'
+};
+
+interface NewsSource {
+  id: string;
+  name: string;
+  url: string;
+  icon?: string;
+}
+
+// Standardized news article interface
+export interface NewsArticle {
+  id: string;
+  title: string;
+  body: string;
+  url: string;
+  published_on: number;
+  source: NewsSource;
+  imageurl?: string;
+  categories?: string[];
+  tags?: string[];
+}
+
 export const getAssets = async () => {
   console.log('Fetching assets from:', `${COINCAP_API}/assets`);
   const cacheKey = 'assets';
@@ -93,37 +127,170 @@ export const getAssets = async () => {
   }
 };
 
-export const getNews = async (assetSymbol?: string) => {
-  console.log('Fetching news for symbol:', assetSymbol);
-  const cacheKey = assetSymbol ? `news-${assetSymbol}` : 'general-news';
-  const cachedData = cache.get(cacheKey);
+export const getNews = async ({ page = 1, limit = 15, categories, assetSymbol }: NewsParams = {}) => {
+  try {
+    // Just use CryptoCompare for now since it's more reliable
+    const news = await getCryptoCompareNews({ 
+      page, 
+      limit: Math.max(50, limit * 2), // Get more news to ensure we have enough
+      categories 
+    });
+
+    // Only filter if we have an asset symbol
+    const filteredNews = assetSymbol ? filterNewsByAsset(news, assetSymbol) : news;
+
+    // Sort and limit results
+    return sortNewsByDate(filteredNews).slice(0, limit);
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    return [];
+  }
+};
+
+const getCryptoCompareNews = async ({ page, limit, categories }: NewsParams) => {
+  try {
+    const params = {
+      api_key: CRYPTOCOMPARE_API_KEY,
+      lang: 'EN',
+      feeds: 'cryptocompare,cointelegraph,coindesk', // Start with the core feeds
+      sortOrder: 'latest',
+      extraParams: 'CryptoRetro',
+      page: Math.max(0, page - 1),
+      limit: limit || 20
+    };
+
+    console.log('Fetching news with params:', {
+      ...params,
+      api_key: '***' // Hide API key in logs
+    });
+
+    const response = await apiClient.get(NEWS_APIS.CRYPTOCOMPARE, { params });
+    
+    console.log('CryptoCompare response:', {
+      status: response.status,
+      hasData: !!response.data,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+      dataKeys: Object.keys(response.data || {}),
+      Message: response.data?.Message,
+      Type: response.data?.Type,
+      sample: response.data?.Data?.[0]
+    });
+
+    // Ensure we have valid data
+    if (!response.data?.Data || !Array.isArray(response.data.Data)) {
+      console.warn('Invalid or empty response:', response.data?.Message || 'No data');
+      return [];
+    }
+
+    return response.data.Data.map((article: any) => {
+      // Extract source name from the URL or source info
+      let sourceName = article.source_info?.name || '';
+      const url = article.url?.toLowerCase() || '';
+      
+      if (url.includes('cointelegraph.com')) {
+        sourceName = 'CoinTelegraph';
+      } else if (url.includes('coindesk.com')) {
+        sourceName = 'CoinDesk';
+      } else if (sourceName.toLowerCase().includes('cryptocompare')) {
+        sourceName = 'CryptoCompare';
+      }
+
+      return {
+        id: article.id?.toString() || String(Math.random()),
+        title: article.title || '',
+        body: article.body || '',
+        url: article.url || '',
+        published_on: article.published_on || Math.floor(Date.now() / 1000),
+        source: {
+          id: sourceName.toLowerCase().replace(/\s+/g, ''),
+          name: sourceName,
+          url: article.source_info?.url || '',
+          icon: article.source_info?.img || ''
+        },
+        imageurl: article.imageurl || '',
+        categories: (article.categories || '').split('|').filter(Boolean),
+        tags: (article.tags || '').split('|').filter(Boolean)
+      };
+    });
+
+  } catch (error) {
+    console.error('Error fetching CryptoCompare news:', error);
+    if (error.response) {
+      console.error('Error response:', {
+        status: error.response.status,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    }
+    return [];
+  }
+};
+
+const filterNewsByAsset = (news: NewsArticle[], assetSymbol?: string): NewsArticle[] => {
+  // If no asset symbol or no news, return as is
+  if (!assetSymbol || !news?.length) {
+    return news || [];
+  }
+
+  const searchTerms = [
+    assetSymbol.toLowerCase(),
+    assetSymbol.toUpperCase(),
+    `$${assetSymbol.toUpperCase()}`, // Common format in news: $BTC
+    `#${assetSymbol.toUpperCase()}`, // Common format in news: #BTC
+  ];
+
+  // Filter articles that mention the asset in title, body, or categories
+  return news.filter(article => {
+    if (!article) return false;
+
+    const titleMatch = searchTerms.some(term => 
+      article.title?.includes(term)
+    );
+
+    const bodyMatch = searchTerms.some(term => 
+      article.body?.includes(term)
+    );
+
+    const categoryMatch = article.categories?.some(category =>
+      searchTerms.some(term => category?.includes(term))
+    );
+
+    return titleMatch || bodyMatch || categoryMatch;
+  });
+};
+
+const sortNewsByDate = (news: NewsArticle[]): NewsArticle[] => {
+  return [...news].sort((a, b) => b.published_on - a.published_on);
+};
+
+export const getNewsCategories = async () => {
+  const cacheKey = 'news:categories';
+  const cachedData = await cacheService.get(cacheKey);
   
-  if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
-    console.log('News response from cache:', cachedData.data);
-    return cachedData.data;
+  if (cachedData) {
+    return cachedData;
   }
 
   try {
-    const response = await throttledRequest({
-      method: 'GET',
-      url: `${CRYPTOCOMPARE_API}/news/`,
+    const response = await apiClient.get(`${CRYPTOCOMPARE_API}/news/categories`, {
       params: {
-        api_key: CRYPTOCOMPARE_API_KEY,
-        ...(assetSymbol && { categories: assetSymbol })
+        api_key: CRYPTOCOMPARE_API_KEY
       }
     });
     
-    console.log('News response:', response.data);
-    const data = response.data.Data || [];
-    cache.set(cacheKey, {
-      data,
-      timestamp: Date.now()
-    });
-    return data;
+    // Ensure we're returning an array and transform the data structure
+    const categoriesData = response.data.Data || {};
+    const categories = Object.entries(categoriesData).map(([categoryName, count]) => ({
+      categoryName,
+      wordsAssociatedCount: count
+    }));
+    
+    await cacheService.set(cacheKey, categories, CACHE_TTL.NEWS);
+    return categories;
   } catch (error) {
-    console.error('Error fetching news:', error);
-    if (cachedData) return cachedData.data;
-    return [];
+    console.error('Error fetching news categories:', error);
+    return []; // Return empty array on error
   }
 };
 
@@ -170,7 +337,7 @@ export const getAssetHistory = async (
 export const getAssetMarkets = async (assetId: string) => {
   console.log('Fetching markets for asset:', assetId);
   const cacheKey = `markets_${assetId}`;
-  const cachedData = cacheService.get(cacheKey);
+  const cachedData = await cacheService.get(cacheKey);
 
   if (cachedData) {
     console.log('Markets response from cache:', cachedData);

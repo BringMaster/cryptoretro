@@ -1,16 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAssets } from '@/lib/api';
 import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
-import MiniChart from '@/components/MiniChart';
-import FilterBar, { FilterOptions } from '@/components/FilterBar';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import Pagination from '@/components/Pagination';
 import Spinner from '@/components/Spinner';
-import WatchlistButton from '@/components/WatchlistButton';
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { getCoinImageUrl } from '@/lib/api';
 import { memo } from 'react';
+
+// Lazy load components
+const MiniChart = lazy(() => import('@/components/MiniChart'));
+const FilterBar = lazy(() => import('@/components/FilterBar'));
+const Pagination = lazy(() => import('@/components/Pagination'));
+const WatchlistButton = lazy(() => import('@/components/WatchlistButton'));
+
+// Component loading fallbacks
+const ChartLoader = () => (
+  <div className="h-[50px] w-[120px] flex items-center justify-center">
+    <Spinner size="sm" />
+  </div>
+);
+
+const FilterLoader = () => (
+  <div className="h-[60px] flex items-center justify-center">
+    <Spinner size="md" />
+  </div>
+);
 
 interface Asset {
   id: string;
@@ -21,6 +36,17 @@ interface Asset {
   marketCapUsd: string;
   volumeUsd24Hr: string;
   changePercent24Hr: string;
+}
+
+interface FilterOptions {
+  search: string;
+  sortBy: 'rank' | 'priceUsd' | 'marketCapUsd' | 'volumeUsd24Hr' | 'changePercent24Hr';
+  sortDirection: 'asc' | 'desc';
+  minPrice: string;
+  maxPrice: string;
+  minMarketCap: string;
+  maxMarketCap: string;
+  pageSize: number;
 }
 
 const defaultFilters: FilterOptions = {
@@ -35,8 +61,17 @@ const defaultFilters: FilterOptions = {
 };
 
 // Memoize child components to prevent unnecessary re-renders
-const MemoizedMiniChart = memo(MiniChart);
-const MemoizedWatchlistButton = memo(WatchlistButton);
+const MemoizedMiniChart = memo(({ assetId, changePercent24Hr }: { assetId: string, changePercent24Hr: string }) => (
+  <Suspense fallback={<ChartLoader />}>
+    <MiniChart assetId={assetId} changePercent24Hr={parseFloat(changePercent24Hr)} />
+  </Suspense>
+));
+
+const MemoizedWatchlistButton = memo(({ assetId }: { assetId: string }) => (
+  <Suspense fallback={<Spinner size="sm" />}>
+    <WatchlistButton assetId={assetId} />
+  </Suspense>
+));
 
 const Index = () => {
   const navigate = useNavigate();
@@ -180,11 +215,13 @@ const Index = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <ErrorBoundary>
-          <FilterBar
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onReset={handleFilterReset}
-          />
+          <Suspense fallback={<FilterLoader />}>
+            <FilterBar
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onReset={handleFilterReset}
+            />
+          </Suspense>
         </ErrorBoundary>
       </div>
 
@@ -238,12 +275,18 @@ const Index = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-100 font-mono">{formatPrice(asset.priceUsd)}</div>
+                  <div className="text text-gray-100 font-mono">{formatPrice(asset.priceUsd)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className={`text-sm ${parseFloat(asset.changePercent24Hr) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {formatPercentage(asset.changePercent24Hr)}
-                  </div>
+                <span
+                      className={`px-2 py-1 rounded ${
+                        parseFloat(asset.changePercent24Hr) >= 0
+                          ? 'bg-green-500/10 text-green-400'
+                          : 'bg-red-500/10 text-red-400'
+                      }`}
+                    >
+                      {formatPercentage(asset.changePercent24Hr)}
+                    </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-100">{formatMarketCap(asset.marketCapUsd)}</div>
@@ -251,18 +294,11 @@ const Index = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-100">{formatMarketCap(asset.volumeUsd24Hr)}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="w-32 h-16">
-                    <MemoizedMiniChart
-                      assetId={asset.id}
-                      changePercent24Hr={parseFloat(asset.changePercent24Hr)}
-                    />
-                  </div>
+                <td className="py-4 px-6">
+                  <MemoizedMiniChart assetId={asset.id} changePercent24Hr={asset.changePercent24Hr} />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <MemoizedWatchlistButton assetId={asset.id} />
-                  </div>
+                <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                  <MemoizedWatchlistButton assetId={asset.id} />
                 </td>
               </tr>
             ))}
@@ -272,11 +308,13 @@ const Index = () => {
 
       {totalPages > 1 && (
         <div className="flex justify-center mt-8">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-          />
+          <Suspense fallback={<Spinner size="md" />}>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </Suspense>
         </div>
       )}
     </div>

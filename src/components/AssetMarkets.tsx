@@ -73,10 +73,10 @@ const AssetMarkets: React.FC<AssetMarketsProps> = ({ assetId }) => {
     const fetchMarkets = async () => {
       try {
         setLoading(true);
-        const data = await getAssetMarkets(assetId);
+        const data: Market[] = await getAssetMarkets(assetId);
         
-        // Add exchange URLs and sort by volume
-        const marketsWithUrls = data
+        // Add exchange URLs and sort by volume, limit to top 10 markets
+        const marketsWithUrls: Market[] = data
           .map((market: Market) => ({
             ...market,
             exchangeUrl: getExchangeUrl(
@@ -85,16 +85,13 @@ const AssetMarkets: React.FC<AssetMarketsProps> = ({ assetId }) => {
               market.quoteSymbol
             )
           }))
-          .sort((a: Market, b: Market) => 
-            parseFloat(b.volumeUsd24Hr) - parseFloat(a.volumeUsd24Hr)
-          )
-          .slice(0, 10); // Only take top 10 markets
+          .sort((a, b) => parseFloat(b.volumeUsd24Hr) - parseFloat(a.volumeUsd24Hr))
+          .slice(0, 10); // Limit to top 10 markets by volume
 
         setMarkets(marketsWithUrls);
-      } catch (error) {
-        console.error('Error fetching markets:', error);
-        setError('Failed to load market data');
-      } finally {
+        setLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setLoading(false);
       }
     };

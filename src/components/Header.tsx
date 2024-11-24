@@ -17,9 +17,18 @@ const Header = () => {
             >
               RetroToken
             </Link>
-            <nav className="flex gap-6">
-              <Link to="/" className="text-gray-300 hover:text-white transition-colors">
-                Markets
+            <nav className="hidden md:flex items-center space-x-8">
+              <Link
+                to="/"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Market
+              </Link>
+              <Link
+                to="/news"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                News
               </Link>
               {isSignedIn && (
                 <Link to="/watchlist" className="text-gray-300 hover:text-white transition-colors">

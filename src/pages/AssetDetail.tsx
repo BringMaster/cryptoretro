@@ -1,11 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { useParams } from 'react-router-dom';
 import { getAssets, getCoinImageUrl } from '@/lib/api';
 import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
-import AdvancedChart from '@/components/AdvancedChart';
-import NewsSection from '@/components/NewsSection';
-import AssetMarkets from '@/components/AssetMarkets';
 import Spinner from '@/components/Spinner';
+
+// Lazy load components
+const AdvancedChart = lazy(() => import('@/components/AdvancedChart'));
+const NewsSection = lazy(() => import('@/components/NewsSection'));
+const AssetMarkets = lazy(() => import('@/components/AssetMarkets'));
+
+// Component loading fallbacks
+const ChartLoader = () => (
+  <div className="h-[400px] flex items-center justify-center">
+    <Spinner size="lg" />
+  </div>
+);
+
+const NewsLoader = () => (
+  <div className="h-[300px] flex items-center justify-center">
+    <Spinner size="md" />
+  </div>
+);
+
+const MarketsLoader = () => (
+  <div className="h-[200px] flex items-center justify-center">
+    <Spinner size="md" />
+  </div>
+);
 
 const AssetDetail: React.FC = () => {
   const { assetId } = useParams<{ assetId: string }>();
@@ -131,21 +152,27 @@ const AssetDetail: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
         <div className="lg:col-span-2 bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
           <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
-          <AdvancedChart 
-            assetId={assetId || ''} 
-            assetName={asset?.name || ''} 
-            changePercent24Hr={parseFloat(asset?.changePercent24Hr || '0')} 
-          />
+          <Suspense fallback={<ChartLoader />}>
+            <AdvancedChart 
+              assetId={assetId || ''} 
+              assetName={asset?.name || ''} 
+              changePercent24Hr={parseFloat(asset?.changePercent24Hr || '0')} 
+            />
+          </Suspense>
         </div>
         <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
-          <NewsSection assetName={asset.name} assetSymbol={asset.symbol} />
+          <Suspense fallback={<NewsLoader />}>
+            <NewsSection assetName={asset.name} assetSymbol={asset.symbol} />
+          </Suspense>
         </div>
       </div>
 
       {/* Markets */}
       <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
         <h2 className="text-xl font-semibold mb-6">Markets</h2>
-        <AssetMarkets assetId={assetId || ''} />
+        <Suspense fallback={<MarketsLoader />}>
+          <AssetMarkets assetId={assetId || ''} />
+        </Suspense>
       </div>
     </div>
   );

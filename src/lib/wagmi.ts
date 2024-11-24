@@ -32,11 +32,10 @@ export const config = defaultWagmiConfig({
 export const modal = createWeb3Modal({
   wagmiConfig: config,
   projectId,
-  chains,
   defaultChain: mainnet,
   themeMode: 'dark',
   themeVariables: {
     '--w3m-font-family': 'Roboto, sans-serif',
     '--w3m-accent-color': '#8B5CF6'
-  }
+  } as Record<string, string>
 })

@@ -1,94 +1,79 @@
-import { useUser } from '@clerk/clerk-react';
-import { useEffect, useState, useCallback } from 'react';
-import { getAssets } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react";
+import { getAssets, getCoinImageUrl } from '@/lib/api';
+import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
 import Spinner from '@/components/Spinner';
-import { formatPrice, formatPercentage } from '@/lib/utils';
-import { Link } from 'react-router-dom';
+import MiniChart from '@/components/MiniChart';
+import WatchlistButton from '@/components/WatchlistButton';
 import { useWatchlist } from '@/hooks/useWatchlist';
-import { X } from 'lucide-react';
 
-interface WatchlistAsset {
-  id: string;
-  assetId: string;
-  asset: {
-    id: string;
-    name: string;
-    symbol: string;
-    priceUsd: string;
-    changePercent24Hr: string;
-  };
-}
+// Loading states
+const ButtonLoader = () => (
+  <div className="w-8 h-8 flex items-center justify-center">
+    <Spinner size="sm" />
+  </div>
+);
 
-export default function WatchlistPage() {
+const WatchlistPage = () => {
+  const navigate = useNavigate();
   const { user } = useUser();
-  const { watchlist, removeFromWatchlist, fetchWatchlist } = useWatchlist();
-  const [watchlistAssets, setWatchlistAssets] = useState<WatchlistAsset[]>([]);
+  const { watchlist } = useWatchlist();
+  const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchAssetDetails = useCallback(async () => {
-    if (!watchlist?.length) {
-      setWatchlistAssets([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Fetch all assets once instead of making multiple API calls
-      const assetsResponse = await getAssets();
-      
-      // Filter and map the assets that are in the watchlist
-      const assets = watchlist
-        .map(assetId => {
-          const asset = assetsResponse.find(a => a.id === assetId);
-          return asset ? {
-            id: assetId,
-            assetId,
-            asset,
-          } : null;
-        })
-        .filter(Boolean) as WatchlistAsset[];
-      
-      setWatchlistAssets(assets);
-    } catch (error) {
-      console.error('Error fetching watchlist assets:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [watchlist]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      fetchWatchlist();
-    }
-  }, [user, fetchWatchlist]);
+    const fetchWatchlistAssets = async () => {
+      if (!user || !watchlist?.length) {
+        setAssets([]);
+        setLoading(false);
+        return;
+      }
 
-  useEffect(() => {
-    fetchAssetDetails();
-  }, [fetchAssetDetails]);
+      try {
+        setLoading(true);
+        const allAssets = await getAssets();
+        const watchlistAssets = allAssets.filter(asset => watchlist.includes(asset.id));
+        setAssets(watchlistAssets);
+      } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        setError('Failed to load watchlist');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handleRemove = async (assetId: string) => {
-    try {
-      await removeFromWatchlist(assetId);
-    } catch (error) {
-      console.error('Error removing from watchlist:', error);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+    fetchWatchlistAssets();
+  }, [user, watchlist]);
 
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4 text-white">Access Required</h2>
-          <p className="text-gray-400 mb-4">Please sign in to view your watchlist</p>
+          <h1 className="text-3xl font-bold mb-4">Watchlist</h1>
+          <p className="text-gray-400 mb-4">Please sign in to view your watchlist.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <Spinner size="lg" className="mb-4" />
+          <p className="text-purple-500 font-medium">Loading watchlist...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-400">
+          <p>{error}</p>
         </div>
       </div>
     );
@@ -96,66 +81,101 @@ export default function WatchlistPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6 text-white">Your Watchlist</h1>
-      
-      {watchlistAssets.length === 0 ? (
-        <div className="text-center bg-[#1E1E1E] rounded-lg p-8">
-          <h2 className="text-xl font-semibold text-white mb-2">Your watchlist is empty</h2>
-          <p className="text-gray-400 mb-4">Start adding cryptocurrencies to track their performance</p>
-          <Link 
-            to="/" 
-            className="inline-block bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+      <h1 className="text-3xl font-bold mb-8">Your Watchlist</h1>
+
+      {assets.length === 0 ? (
+        <div className="text-center py-12 bg-[#0a0a0a] rounded-lg">
+          <p className="text-gray-400 mb-4">Your watchlist is empty.</p>
+          <button
+            onClick={() => navigate('/')}
+            className="text-purple-500 hover:text-purple-400 transition-colors"
           >
-            Browse Markets
-          </Link>
+            Browse assets to add to your watchlist
+          </button>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {watchlistAssets.map((item) => (
-            <div 
-              key={item.id} 
-              className="bg-[#1E1E1E] rounded-lg p-4 shadow-lg hover:bg-[#222222] transition-colors relative group"
-            >
-              <Link to={`/asset/${item.assetId}`} className="block">
-                <div className="flex items-center gap-3 mb-4">
-                  <img
-                    src={`https://assets.coincap.io/assets/icons/${item.asset.symbol.toLowerCase()}@2x.png`}
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = `/cryptocurrencies/${item.asset.symbol.toLowerCase()}.png`;
-                    }}
-                    alt={`${item.asset.name} logo`}
-                    className="w-8 h-8 rounded-full"
-                  />
-                  <div>
-                    <h3 className="text-lg font-medium text-white">{item.asset.name}</h3>
-                    <p className="text-sm text-gray-400">{item.asset.symbol}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-white font-mono text-lg">
-                    {formatPrice(item.asset.priceUsd)}
-                  </span>
-                  <span className={`font-medium ${
-                    parseFloat(item.asset.changePercent24Hr) >= 0 
-                      ? 'text-green-500' 
-                      : 'text-red-500'
-                  }`}>
-                    {formatPercentage(item.asset.changePercent24Hr)}
-                  </span>
-                </div>
-              </Link>
-              <button
-                onClick={() => handleRemove(item.assetId)}
-                className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Remove from watchlist"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          ))}
+        <div className="overflow-x-auto bg-[#0a0a0a] rounded-lg shadow-lg">
+          <table className="min-w-full divide-y divide-gray-800">
+            <thead>
+              <tr className="text-left text-gray-400">
+                <th className="py-4 px-6">#</th>
+                <th className="py-4 px-6">Name</th>
+                <th className="py-4 px-6">Price</th>
+                <th className="py-4 px-6">24h %</th>
+                <th className="py-4 px-6">Market Cap</th>
+                <th className="py-4 px-6">Volume (24h)</th>
+                <th className="py-4 px-6">Chart</th>
+                <th className="py-4 px-6">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {assets.map((asset) => (
+                <tr
+                  key={asset.id}
+                  className="hover:bg-gray-800/30 cursor-pointer transition-colors"
+                  onClick={() => navigate(`/asset/${asset.id}`)}
+                >
+                  <td className="py-4 px-6">{asset.rank}</td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={getCoinImageUrl(asset.symbol)[0]}
+                        alt={asset.name}
+                        className="w-8 h-8 rounded-full"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const urls = getCoinImageUrl(asset.symbol);
+                          const currentIndex = urls.indexOf(target.src);
+                          if (currentIndex < urls.length - 1) {
+                            target.src = urls[currentIndex + 1];
+                          } else {
+                            target.src = '/placeholder-coin.png';
+                          }
+                        }}
+                      />
+                      <div>
+                        <div className="font-medium">{asset.name}</div>
+                        <div className="text-sm text-gray-400">{asset.symbol}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6 font-mono">
+                    {formatPrice(asset.priceUsd)}
+                  </td>
+                  <td className="py-4 px-6">
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        parseFloat(asset.changePercent24Hr) >= 0
+                          ? 'bg-green-500/10 text-green-400'
+                          : 'bg-red-500/10 text-red-400'
+                      }`}
+                    >
+                      {formatPercentage(asset.changePercent24Hr)}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    {formatMarketCap(asset.marketCapUsd)}
+                  </td>
+                  <td className="py-4 px-6">
+                    {formatMarketCap(asset.volumeUsd24Hr)}
+                  </td>
+                  <td className="py-4 px-6">
+                    <MiniChart 
+                      assetId={asset.id} 
+                      changePercent24Hr={parseFloat(asset.changePercent24Hr)} 
+                    />
+                  </td>
+                  <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                    <WatchlistButton assetId={asset.id} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
-}
+};
+
+export default WatchlistPage;

@@ -16,7 +16,7 @@ export default function Web3Status() {
     address: address,
     chainId: chainId,
     watch: true,
-  });
+  } as any);
 
   if (!isSignedIn || !isConnected || !address) return null;
 
