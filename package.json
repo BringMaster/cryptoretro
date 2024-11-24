@@ -7,10 +7,13 @@
     "dev": "concurrently \"vite\" \"npm run server\"",
     "server": "tsx watch server.ts",
     "start": "node dist/server.js",
-    "build": "prisma generate && tsc && vite build",
-    "vercel-build": "prisma generate && prisma db push && tsc && vite build",
+    "build": "npm install && prisma generate && tsc -p tsconfig.server.json && vite build",
+    "postinstall": "prisma generate",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.17.0",

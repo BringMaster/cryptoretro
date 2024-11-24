@@ -1,26 +1,21 @@
 {
   "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "builds": [
     {
-      "src": "dist/server.js",
+      "src": "server.ts",
       "use": "@vercel/node"
-    },
-    {
-      "src": "dist/**/*",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/dist/server.js"
-    },
-    {
-      "handle": "filesystem"
+      "dest": "/server.ts"
     },
     {
       "src": "/(.*)",
-      "dest": "/dist/index.html"
+      "dest": "/"
     }
   ]
 }
