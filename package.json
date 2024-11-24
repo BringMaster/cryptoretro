@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"npm run dev\"",
     "server": "tsx watch server.ts",
-    "build": "prisma generate && vite build",
+    "build": "prisma generate && prisma db push && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
