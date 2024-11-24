@@ -26,8 +26,8 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['http://retrotoken.io:3000', 'https://retrotoken.io:3000'] 
-    : ['http://localhost:3000', 'http://localhost:5000', 'http://retrotoken.io:3000'],
+    ? process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : ['https://cryptoretro.vercel.app']
+    : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
