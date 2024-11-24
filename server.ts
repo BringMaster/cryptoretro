@@ -2,9 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import { handleWatchlist } from './src/api/watchlist';
-import { handleAssetWatchlist } from './src/api/watchlist/[assetId]';
+import { handleWatchlistItem } from './src/api/watchlist/[assetId]';
 import dotenv from 'dotenv';
-import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
 // Load environment variables
 dotenv.config();
@@ -19,7 +18,7 @@ app.use(cors({
     : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Signature'],
 }));
 app.use(express.json());
 
@@ -55,10 +54,11 @@ app.use('/api/coincap/*', async (req, res) => {
   }
 });
 
-// Protected routes with Clerk authentication
-app.get('/api/watchlist', ClerkExpressRequireAuth(), handleWatchlist);
-app.post('/api/watchlist/:assetId', ClerkExpressRequireAuth(), handleAssetWatchlist);
-app.delete('/api/watchlist/:assetId', ClerkExpressRequireAuth(), handleAssetWatchlist);
+// Watchlist endpoints
+app.get('/api/watchlist', handleWatchlist);
+app.get('/api/watchlist/:assetId', handleWatchlistItem);
+app.post('/api/watchlist/:assetId', handleWatchlistItem);
+app.delete('/api/watchlist/:assetId', handleWatchlistItem);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExternalLink } from 'lucide-react';
+import './AssetNews.css';
 
 interface AssetNewsProps {
   assetSymbol: string;
@@ -73,28 +74,6 @@ export function AssetNews({ assetSymbol }: AssetNewsProps) {
       </CardHeader>
       <CardContent className="p-6">
         <div className="h-[600px] overflow-y-auto pr-4 custom-scrollbar">
-          <style jsx>{`
-            .custom-scrollbar::-webkit-scrollbar {
-              width: 6px;
-              height: 6px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-track {
-              background: rgba(24, 24, 27, 0.6);
-              border-radius: 3px;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb {
-              background: rgba(161, 161, 170, 0.3);
-              border-radius: 3px;
-              transition: background-color 0.2s ease-in-out;
-            }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-              background: rgba(161, 161, 170, 0.5);
-            }
-            .custom-scrollbar {
-              scrollbar-width: thin;
-              scrollbar-color: rgba(161, 161, 170, 0.3) rgba(24, 24, 27, 0.6);
-            }
-          `}</style>
           <div className="space-y-3">
             {news.map((item) => (
               <Card 

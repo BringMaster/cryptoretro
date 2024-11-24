@@ -55,16 +55,24 @@ export default memo(({ assetId, assetName, changePercent24Hr }: AdvancedChartPro
   const [selectedRange, setSelectedRange] = useState<TimeRange>(TIME_RANGES[0]);
   const [chartData, setChartData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const chartRef = useRef(null);
 
   useEffect(() => {
     const fetchChartData = async () => {
-      setLoading(true);
-      const end = Date.now();
-      const start = end - (selectedRange.days * 24 * 60 * 60 * 1000);
-      const history = await getAssetHistory(assetId, selectedRange.interval, start, end);
-      
-      if (history && history.length > 0) {
+      try {
+        setLoading(true);
+        setError(null);
+        const end = Date.now();
+        const start = end - (selectedRange.days * 24 * 60 * 60 * 1000);
+        const history = await getAssetHistory(assetId, selectedRange.interval, start, end);
+        
+        if (!history || history.length === 0) {
+          setError('No historical data available for this time range');
+          setChartData(null);
+          return;
+        }
+
         const data = {
           labels: history.map((point: any) => new Date(point.time)),
           datasets: [
@@ -84,17 +92,22 @@ export default memo(({ assetId, assetName, changePercent24Hr }: AdvancedChartPro
           ],
         };
         setChartData(data);
+      } catch (err) {
+        console.error('Error fetching chart data:', err);
+        setError('Failed to load chart data');
+        setChartData(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchChartData();
   }, [assetId, selectedRange, assetName, changePercent24Hr]);
 
   useEffect(() => {
-    // Cleanup chart instance on unmount
     return () => {
       if (chartRef.current) {
+        // @ts-ignore - chartRef.current.destroy exists on Chart instance
         chartRef.current.destroy();
       }
     };
@@ -182,6 +195,14 @@ export default memo(({ assetId, assetName, changePercent24Hr }: AdvancedChartPro
     return (
       <div className="h-[500px] w-full flex items-center justify-center">
         <div className="animate-pulse text-purple-500">Loading chart data...</div>
+      </div>
+    );
+  }
+
+  if (error || !chartData) {
+    return (
+      <div className="h-[500px] w-full flex items-center justify-center">
+        <div className="text-red-500">{error || 'No data available'}</div>
       </div>
     );
   }

@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAssets, getCoinImageUrl } from '@/lib/api';
 import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
@@ -6,65 +5,71 @@ import Spinner from '@/components/Spinner';
 import MiniChart from '@/components/MiniChart';
 import WatchlistButton from '@/components/WatchlistButton';
 import { useAccount } from 'wagmi';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { useQuery } from '@tanstack/react-query';
 
-const WatchlistPage = () => {
+export function WatchlistPage() {
   const navigate = useNavigate();
   const { address } = useAccount();
-  const [loading, setLoading] = useState(true);
-  const [assets, setAssets] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { open } = useWeb3Modal();
 
-  useEffect(() => {
-    const fetchWatchlistAssets = async () => {
-      if (!address) {
-        setAssets([]);
-        setLoading(false);
-        return;
+  // Query for watchlist assets
+  const { 
+    data: assets = [], 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ['watchlist', address],
+    queryFn: async () => {
+      if (!address) return [];
+
+      // Get watchlist items from API
+      const watchlistResponse = await fetch('/api/watchlist', {
+        headers: {
+          'Authorization': `Bearer ${address}`
+        }
+      });
+
+      if (!watchlistResponse.ok) {
+        throw new Error('Failed to fetch watchlist');
       }
 
-      try {
-        setLoading(true);
-        // Get watchlist from local storage
-        const watchlist = JSON.parse(localStorage.getItem(`watchlist_${address}`) || '[]');
-        
-        // Fetch all assets
-        const allAssets = await getAssets();
-        
-        // Filter assets that are in the watchlist
-        const watchlistAssets = allAssets.filter((asset: any) => 
-          watchlist.includes(asset.id)
-        );
-        
-        setAssets(watchlistAssets);
-      } catch (error) {
-        console.error('Error fetching watchlist assets:', error);
-        setError('Failed to load watchlist data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchWatchlistAssets();
-
-    // Set up periodic updates
-    const updateInterval = setInterval(fetchWatchlistAssets, 30000);
-    return () => clearInterval(updateInterval);
-  }, [address]);
+      const watchlistItems = await watchlistResponse.json();
+      const watchlistIds = watchlistItems.map((item: any) => item.assetId);
+      
+      // Fetch all assets
+      const allAssets = await getAssets();
+      
+      // Filter assets that are in the watchlist
+      return allAssets.filter((asset: any) => watchlistIds.includes(asset.id));
+    },
+    enabled: !!address,
+    // Refresh every 30 seconds
+    refetchInterval: 30000,
+    // Keep previous data while fetching new data
+    placeholderData: (previousData) => previousData,
+  });
 
   if (!address) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h2 className="text-2xl font-semibold mb-4">Connect Your Wallet</h2>
-          <p className="text-gray-400">
+          <p className="text-gray-400 mb-6">
             Please connect your wallet to view and manage your watchlist.
           </p>
+          <button
+            onClick={() => open()}
+            className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+          >
+            Connect Wallet
+          </button>
         </div>
       </div>
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -79,7 +84,7 @@ const WatchlistPage = () => {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-red-400 text-center py-8">
-          {error}
+          {error instanceof Error ? error.message : 'Failed to load watchlist data'}
         </div>
       </div>
     );
@@ -90,14 +95,14 @@ const WatchlistPage = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <h2 className="text-2xl font-semibold mb-4">Your Watchlist is Empty</h2>
-          <p className="text-gray-400 mb-8">
-            Start building your watchlist by adding some assets from the market.
+          <p className="text-gray-400 mb-6">
+            Start adding cryptocurrencies to your watchlist to track their performance.
           </p>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
           >
-            Browse Market
+            Browse Assets
           </button>
         </div>
       </div>
@@ -139,29 +144,23 @@ const WatchlistPage = () => {
                       className="w-8 h-8 rounded-full"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        const urls = getCoinImageUrl(asset.symbol);
-                        const currentIndex = urls.indexOf(target.src);
-                        if (currentIndex < urls.length - 1) {
-                          target.src = urls[currentIndex + 1];
-                        } else {
-                          target.src = '/placeholder-coin.png';
-                        }
+                        target.src = getCoinImageUrl(asset.symbol)[1];
                       }}
                     />
                     <div className="ml-4">
-                      <div className="font-medium">{asset.name}</div>
+                      <div className="text-sm font-medium">{asset.name}</div>
                       <div className="text-sm text-gray-400">{asset.symbol}</div>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-mono">{formatPrice(asset.priceUsd)}</div>
+                  <div className="text-sm">{formatPrice(asset.priceUsd)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className={`text-sm px-2 py-1 rounded inline-block ${
-                    parseFloat(asset.changePercent24Hr) >= 0
-                      ? 'bg-green-500/10 text-green-400'
-                      : 'bg-red-500/10 text-red-400'
+                  <div className={`text-sm ${
+                    parseFloat(asset.changePercent24Hr) >= 0 
+                      ? 'text-green-500' 
+                      : 'text-red-500'
                   }`}>
                     {formatPercentage(asset.changePercent24Hr)}
                   </div>
@@ -173,11 +172,9 @@ const WatchlistPage = () => {
                   <div className="text-sm">{formatMarketCap(asset.volumeUsd24Hr)}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="w-32 h-16">
-                    <MiniChart assetId={asset.id} changePercent24Hr={parseFloat(asset.changePercent24Hr)} />
-                  </div>
+                  <MiniChart assetId={asset.id} changePercent24Hr={parseFloat(asset.changePercent24Hr)} />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                <td className="px-6 py-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                   <WatchlistButton assetId={asset.id} />
                 </td>
               </tr>
@@ -187,6 +184,6 @@ const WatchlistPage = () => {
       </div>
     </div>
   );
-};
+}
 
 export default WatchlistPage;
