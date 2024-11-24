@@ -3,22 +3,16 @@ import { useParams } from 'react-router-dom';
 import { getAssets, getCoinImageUrl } from '@/lib/api';
 import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
 import Spinner from '@/components/Spinner';
+import { AssetNews } from '@/components/asset/AssetNews';
 
 // Lazy load components
 const AdvancedChart = lazy(() => import('@/components/AdvancedChart'));
-const NewsSection = lazy(() => import('@/components/NewsSection'));
 const AssetMarkets = lazy(() => import('@/components/AssetMarkets'));
 
 // Component loading fallbacks
 const ChartLoader = () => (
   <div className="h-[400px] flex items-center justify-center">
     <Spinner size="lg" />
-  </div>
-);
-
-const NewsLoader = () => (
-  <div className="h-[300px] flex items-center justify-center">
-    <Spinner size="md" />
   </div>
 );
 
@@ -77,7 +71,7 @@ const AssetDetail: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Asset Header */}
-      <div className="mb-8 bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+      <div className="mb-8 bg-[#0a0a0a] rounded-lg p-6 border border-gray-300">
         <div className="flex items-start gap-6">
           {/* Coin Image and Basic Info */}
           <div className="flex items-center gap-4">
@@ -115,7 +109,7 @@ const AssetDetail: React.FC = () => {
           </div>
 
           {/* Key Metrics */}
-          <div className="flex-1 grid grid-cols-3 gap-6 ml-8 border-l border-gray-800 pl-8">
+          <div className="flex-1 grid grid-cols-3 gap-6 ml-8 border-l border-gray-400 pl-8">
             <div>
               <p className="text-sm text-gray-400 mb-1">Market Cap</p>
               <p className="text-xl">{formatMarketCap(asset.marketCapUsd)}</p>
@@ -148,9 +142,10 @@ const AssetDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Chart and News Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div className="lg:col-span-2 bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
+      {/* Chart and News Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+        {/* Chart */}
+        <div className="lg:col-span-2 bg-[#0a0a0a] rounded-lg p-6 border border-gray-400">
           <h2 className="text-xl font-semibold mb-4">Price Chart</h2>
           <Suspense fallback={<ChartLoader />}>
             <AdvancedChart 
@@ -160,16 +155,16 @@ const AssetDetail: React.FC = () => {
             />
           </Suspense>
         </div>
-        <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
-          <Suspense fallback={<NewsLoader />}>
-            <NewsSection assetName={asset.name} assetSymbol={asset.symbol} />
-          </Suspense>
+
+        {/* News */}
+        <div className="lg:col-span-1">
+          <AssetNews assetSymbol={asset.symbol} />
         </div>
       </div>
 
-      {/* Markets */}
-      <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-800">
-        <h2 className="text-xl font-semibold mb-6">Markets</h2>
+      {/* Markets Section */}
+      <div className="bg-[#0a0a0a] rounded-lg p-6 border border-gray-400">
+        <h2 className="text-xl font-semibold mb-4">Markets</h2>
         <Suspense fallback={<MarketsLoader />}>
           <AssetMarkets assetId={assetId || ''} />
         </Suspense>

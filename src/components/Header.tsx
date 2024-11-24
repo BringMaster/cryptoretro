@@ -1,10 +1,38 @@
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
-import Web3Status from "./Web3Status";
-import Web3Connect from "./Web3Connect";
+import { useAccount, useBalance } from 'wagmi';
+import { useChainId, useDisconnect } from 'wagmi';
+import { formatEther } from 'viem';
+import { mainnet, polygon, optimism, arbitrum, sepolia, goerli, polygonMumbai, arbitrumGoerli, optimismGoerli } from 'wagmi/chains';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 const Header = () => {
-  const { isLoaded, isSignedIn } = useUser();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { disconnect } = useDisconnect();
+  const { open } = useWeb3Modal();
+  const { data: balance } = useBalance({
+    address: address,
+  });
+
+  const getNetworkName = (chainId: number) => {
+    const networks = {
+      [mainnet.id]: 'Ethereum',
+      [polygon.id]: 'Polygon',
+      [optimism.id]: 'Optimism',
+      [arbitrum.id]: 'Arbitrum',
+      [sepolia.id]: 'Sepolia Testnet',
+      [goerli.id]: 'Goerli Testnet',
+      [polygonMumbai.id]: 'Mumbai Testnet',
+      [arbitrumGoerli.id]: 'Arbitrum Goerli',
+      [optimismGoerli.id]: 'Optimism Goerli'
+    };
+    return networks[chainId] || 'Unknown Network';
+  };
+
+  const truncateAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   return (
     <header className="bg-[#1E1E1E] border-b border-[#2a2a2a]">
@@ -24,47 +52,47 @@ const Header = () => {
               >
                 Market
               </Link>
-              <Link
-                to="/news"
+              <Link 
+                to="/watchlist" 
                 className="text-gray-300 hover:text-white transition-colors"
               >
-                News
+                Watchlist
               </Link>
-              {isSignedIn && (
-                <Link to="/watchlist" className="text-gray-300 hover:text-white transition-colors">
-                  Watchlist
-                </Link>
-              )}
             </nav>
           </div>
 
-          <div className="flex items-center gap-6">
-            {isLoaded && isSignedIn ? (
-              <div className="flex items-center gap-4">
-                <Web3Status />
-                <Web3Connect />
-                <UserButton 
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      avatarBox: "w-10 h-10",
-                      userButtonTrigger: "focus:shadow-none focus:ring-0"
-                    }
-                  }}
-                />
-              </div>
+          <div className="flex items-center gap-4">
+            {!isConnected ? (
+              <button
+                onClick={() => open()}
+                className="px-4 py-2 rounded-lg border border-gray-700 text-gray-300 hover:bg-grey-900/20 hover:text-grey-400 hover:border-gray-400/70 transition-colors"
+              >
+                Connect Wallet
+              </button>
             ) : (
-              <div className="flex gap-4">
-                <SignInButton mode="modal">
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-                    Sign In
-                  </button>
-                </SignInButton>
-                <SignUpButton mode="modal">
-                  <button className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors">
-                    Register
-                  </button>
-                </SignUpButton>
+              <div className="flex items-center gap-4">
+                <div className="hidden md:flex items-center gap-4 px-4 py-2 bg-[#2a2a2a] rounded-lg">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-gray-400">
+                      {chainId ? getNetworkName(chainId) : 'Unknown Network'}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {balance ? `${Number(formatEther(balance.value)).toFixed(4)} ${balance.symbol}` : '0.00'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-400">Wallet</span>
+                    <span className="text-sm font-medium text-gray-300">
+                      {truncateAddress(address as string)}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => disconnect()}
+                  className="px-4 py-2 rounded-lg border border-gray-700 text-gray-300 hover:bg-grey-900/20 hover:text-grey-400 hover:border-gray-400/70 transition-colors"
+                >
+                  Disconnect
+                </button>
               </div>
             )}
           </div>

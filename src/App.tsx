@@ -1,5 +1,4 @@
 import { Suspense, lazy } from 'react';
-import { ClerkProvider } from '@/providers/ClerkProvider';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiConfig } from "wagmi";
@@ -11,7 +10,6 @@ import Spinner from "./components/Spinner";
 const Index = lazy(() => import("./pages/Index"));
 const AssetDetail = lazy(() => import("./pages/AssetDetail"));
 const Watchlist = lazy(() => import("./pages/watchlist"));
-const News = lazy(() => import("./pages/News"));
 
 // Loading fallback component
 const PageLoader = () => (
@@ -34,23 +32,20 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <WagmiConfig config={config}>
-      <ClerkProvider>
-        <QueryClientProvider client={queryClient}>
-          <Router>
-            <div className="min-h-screen bg-[#121212] text-white">
-              <Header />
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/asset/:assetId" element={<AssetDetail />} />
-                  <Route path="/news" element={<News />} />
-                  <Route path="/watchlist" element={<Watchlist />} />
-                </Routes>
-              </Suspense>
-            </div>
-          </Router>
-        </QueryClientProvider>
-      </ClerkProvider>
+      <QueryClientProvider client={queryClient}>
+        <Router>
+          <div className="min-h-screen bg-[#121212] text-white">
+            <Header />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/asset/:assetId" element={<AssetDetail />} />
+                <Route path="/watchlist" element={<Watchlist />} />
+              </Routes>
+            </Suspense>
+          </div>
+        </Router>
+      </QueryClientProvider>
     </WagmiConfig>
   );
 }

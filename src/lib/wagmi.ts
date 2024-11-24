@@ -1,5 +1,5 @@
 import { createConfig, http } from 'wagmi'
-import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains'
+import { mainnet, polygon, optimism, arbitrum, sepolia, goerli, polygonMumbai, arbitrumGoerli, optimismGoerli } from 'wagmi/chains'
 import { walletConnect } from 'wagmi/connectors'
 import { createWeb3Modal } from '@web3modal/wagmi/react'
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config'
@@ -17,7 +17,18 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 }
 
-const chains = [mainnet, polygon, optimism, arbitrum] as const
+const chains = [
+  mainnet,
+  polygon,
+  optimism,
+  arbitrum,
+  // Test networks
+  sepolia,
+  goerli,
+  polygonMumbai,
+  arbitrumGoerli,
+  optimismGoerli
+] as const
 
 export const config = defaultWagmiConfig({
   chains,
@@ -27,6 +38,43 @@ export const config = defaultWagmiConfig({
   enableInjected: true,
   enableEIP6963: true,
   enableCoinbase: true,
+  ssr: false,
+  storage: {
+    getItem: (key: string) => {
+      try {
+        const value = window.localStorage.getItem(key)
+        return value ? JSON.parse(value) : null
+      } catch (error) {
+        console.error('Error reading from localStorage:', error)
+        return null
+      }
+    },
+    setItem: (key: string, value: unknown) => {
+      try {
+        window.localStorage.setItem(key, JSON.stringify(value))
+      } catch (error) {
+        console.error('Error writing to localStorage:', error)
+      }
+    },
+    removeItem: (key: string) => {
+      try {
+        window.localStorage.removeItem(key)
+      } catch (error) {
+        console.error('Error removing from localStorage:', error)
+      }
+    },
+    key: (index: number) => {
+      try {
+        return window.localStorage.key(index) ?? ''
+      } catch (error) {
+        console.error('Error accessing localStorage key:', error)
+        return ''
+      }
+    },
+    get length() {
+      return window.localStorage.length
+    }
+  }
 })
 
 export const modal = createWeb3Modal({

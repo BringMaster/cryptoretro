@@ -4,7 +4,6 @@ import { getAssets } from '@/lib/api';
 import { formatPrice, formatMarketCap, formatPercentage } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Spinner from '@/components/Spinner';
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { getCoinImageUrl } from '@/lib/api';
 import { memo } from 'react';
 
@@ -81,8 +80,6 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterOptions>(defaultFilters);
   const [currentPage, setCurrentPage] = useState(1);
-
-  const { isLoaded, isSignedIn, user } = useUser();
 
   useEffect(() => {
     const fetchAssets = async () => {

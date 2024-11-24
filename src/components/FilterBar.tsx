@@ -77,7 +77,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
         {/* Search */}
         <div className="flex-1 min-w-[200px]">
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-white" />
             <Input
               placeholder="Search by name or symbol..."
               value={filters.search}
@@ -105,7 +105,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
             </SelectContent>
           </Select>
           <Button
-            variant="outline"
+            variant="default"
             size="icon"
             onClick={toggleSortDirection}
             className="w-10"
@@ -174,7 +174,7 @@ const FilterBar: React.FC<FilterBarProps> = ({
 
         {/* Reset Button */}
         <Button
-          variant="outline"
+          variant="default"
           onClick={onReset}
           className="ml-auto"
         >

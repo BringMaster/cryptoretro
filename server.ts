@@ -42,33 +42,30 @@ app.use((req, res, next) => {
 });
 
 // Protected routes with Clerk authentication
-const protectedRouter = express.Router();
-protectedRouter.use((req, res, next) => {
-  console.log('Authenticating request...');
-  console.log('CLERK_SECRET_KEY:', process.env.CLERK_SECRET_KEY?.slice(0, 10) + '...');
-  console.log('CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY?.slice(0, 10) + '...');
-  ClerkExpressRequireAuth()(req, res, next);
+app.use('/api/watchlist', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    await handleWatchlist(req, res);
+  } catch (error) {
+    console.error('Error in watchlist route:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
-// Watchlist routes (protected)
-protectedRouter.get('/watchlist', handleWatchlist);
-protectedRouter.post('/watchlist', handleWatchlist);
-protectedRouter.get('/watchlist/:assetId', handleAssetWatchlist);
-protectedRouter.delete('/watchlist/:assetId', handleAssetWatchlist);
-
-// Mount protected routes under /api
-app.use('/api', protectedRouter);
+app.use('/api/watchlist/:assetId', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    await handleAssetWatchlist(req, res);
+  } catch (error) {
+    console.error('Error in asset watchlist route:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+  console.error('Global error handler:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 });
