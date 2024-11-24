@@ -223,12 +223,20 @@ const getCryptoCompareNews = async ({ page = 1, limit = 15, categories }: NewsPa
 
   } catch (error) {
     console.error('Error fetching CryptoCompare news:', error);
-    if (error.response) {
-      console.error('Error response:', {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers
-      });
+    if (axios.isAxiosError(error)) {
+      if (error.response) {
+        console.error('Error response:', {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+      } else {
+        console.error('Error setting up request:', error.message);
+      }
+    } else {
+      console.error('Unexpected error:', error);
     }
     return [];
   }

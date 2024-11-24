@@ -1,4 +1,4 @@
-import { createConfig, http } from 'wagmi'
+import { createConfig, http, Storage } from 'wagmi'
 import { mainnet, polygon, optimism, arbitrum, sepolia, goerli, polygonMumbai, arbitrumGoerli, optimismGoerli } from 'wagmi/chains'
 import { walletConnect } from 'wagmi/connectors'
 import { createWeb3Modal } from '@web3modal/wagmi/react'
@@ -32,23 +32,30 @@ const chains = [
 
 // Custom storage implementation
 const customStorage: Storage = {
-  getItem(key: string): string | null {
+  getItem: <key extends string, value extends Record<string, unknown>, defaultValue extends value | null | undefined>(
+    key: key, 
+    defaultValue?: defaultValue
+  ): (defaultValue extends null ? value | null : value) | Promise<(defaultValue extends null ? value | null : value)> => {
     try {
-      return localStorage.getItem(key)
+      const item = localStorage.getItem(key)
+      return item ? JSON.parse(item) : defaultValue ?? null
     } catch {
-      return null
+      return defaultValue ?? null
     }
   },
   
-  setItem(key: string, value: string): void {
+  setItem: <key extends string, value extends Record<string, unknown> | null>(
+    key: key, 
+    value: value
+  ): void | Promise<void> => {
     try {
-      localStorage.setItem(key, value)
+      localStorage.setItem(key, JSON.stringify(value))
     } catch {
       console.warn('Failed to set item in storage')
     }
   },
   
-  removeItem(key: string): void {
+  removeItem: (key: string): void => {
     try {
       localStorage.removeItem(key)
     } catch {
@@ -64,15 +71,16 @@ const customStorage: Storage = {
     }
   },
   
-  key(index: number): string | null {
+  key: (index: number): string | null => {
     try {
-      return localStorage.key(index)
+      const result = localStorage.key(index)
+      return result ?? null
     } catch {
       return null
     }
   },
   
-  clear(): void {
+  clear: (): void => {
     try {
       localStorage.clear()
     } catch {
@@ -81,7 +89,7 @@ const customStorage: Storage = {
   }
 }
 
-const config = defaultWagmiConfig({
+export const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,

@@ -18,7 +18,7 @@ export const verifySignature = async (signature: string, address: string): Promi
       address: address as `0x${string}`,
     });
     
-    const isValid = recoveredAddress.toLowerCase() === address.toLowerCase();
+    const isValid = recoveredAddress === true;
     console.log('Signature verification result:', {
       recoveredAddress,
       providedAddress: address,
