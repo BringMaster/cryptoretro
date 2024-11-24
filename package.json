@@ -7,7 +7,7 @@
     "dev": "concurrently \"vite\" \"npm run server\"",
     "server": "tsx watch server.ts",
     "start": "node dist/server.js",
-    "build": "prisma generate && tsc -p tsconfig.server.json && vite build",
+    "build": "prisma generate && tsc -p tsconfig.server.json && vite build && xcopy /E /I /Y dist .",
     "postinstall": "prisma generate",
     "lint": "eslint .",
     "preview": "vite preview"

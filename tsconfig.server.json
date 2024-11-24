@@ -14,10 +14,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "types": ["vite/client", "node"]
   },
   "ts-node": {
     "require": ["tsconfig-paths/register"]
   },
-  "include": ["server.ts", "src/api/**/*", "src/types/**/*", "src/lib/**/*"]
+  "include": ["server.ts", "src/types/**/*"],
+  "exclude": ["node_modules"]
 }
