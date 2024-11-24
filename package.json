@@ -16,8 +16,6 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.17.0",
-    "@clerk/nextjs": "^6.5.0",
     "@fontsource/jetbrains-mono": "^5.1.1",
     "@fontsource/press-start-2p": "^5.1.0",
     "@fontsource/space-mono": "^5.1.1",

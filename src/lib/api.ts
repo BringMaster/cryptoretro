@@ -24,6 +24,13 @@ const apiClient = axios.create({
   }
 });
 
+// Add base URL for production
+if (process.env.NODE_ENV === 'production') {
+  apiClient.defaults.baseURL = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://cryptoretro.vercel.app';
+}
+
 // Add response interceptor for debugging
 apiClient.interceptors.response.use(
   response => {

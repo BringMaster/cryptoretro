@@ -1,24 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import { handleWatchlist } from './src/api/watchlist';
 import { handleAssetWatchlist } from './src/api/watchlist/[assetId]';
 import dotenv from 'dotenv';
-import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
 // Load environment variables
 dotenv.config();
-
-// Validate Clerk configuration
-if (!process.env.CLERK_SECRET_KEY) {
-  throw new Error('CLERK_SECRET_KEY is required');
-}
-
-if (!process.env.VITE_CLERK_PUBLISHABLE_KEY) {
-  throw new Error('VITE_CLERK_PUBLISHABLE_KEY is required');
-}
-
-// Configure Clerk
-process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -41,8 +29,33 @@ app.use((req, res, next) => {
   next();
 });
 
-// Protected routes with Clerk authentication
-app.use('/api/watchlist', ClerkExpressRequireAuth(), async (req, res) => {
+// CoinCap API proxy
+app.use('/api/coincap/*', async (req, res) => {
+  try {
+    const coincapPath = req.path.replace('/api/coincap/', '');
+    const coincapUrl = `https://api.coincap.io/v2/${coincapPath}`;
+    
+    console.log('Proxying request to:', coincapUrl);
+    console.log('Query params:', req.query);
+
+    const response = await axios({
+      method: req.method,
+      url: coincapUrl,
+      params: req.query,
+      headers: {
+        'Authorization': `Bearer ${process.env.VITE_COINCAP_API_KEY}`
+      }
+    });
+
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('CoinCap API Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal server error' });
+  }
+});
+
+// Protected routes without Clerk authentication
+app.use('/api/watchlist', async (req, res) => {
   try {
     await handleWatchlist(req, res);
   } catch (error) {
@@ -51,7 +64,7 @@ app.use('/api/watchlist', ClerkExpressRequireAuth(), async (req, res) => {
   }
 });
 
-app.use('/api/watchlist/:assetId', ClerkExpressRequireAuth(), async (req, res) => {
+app.use('/api/watchlist/:assetId', async (req, res) => {
   try {
     await handleAssetWatchlist(req, res);
   } catch (error) {
