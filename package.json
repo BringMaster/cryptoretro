@@ -4,11 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite\" \"npm run server\"",
-    "server": "tsx watch server.ts",
-    "start": "node dist/server.js",
-    "build": "prisma generate && tsc -p tsconfig.server.json && vite build && xcopy /E /I /Y dist .",
-    "postinstall": "prisma generate",
+    "dev": "vite",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview"
   },
