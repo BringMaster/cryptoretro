@@ -6,16 +6,11 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"npm run server\"",
     "server": "tsx watch server.ts",
-    "start": "tsx server.ts",
-    "build": "npm run build:server && npm run build:client",
-    "build:client": "vite build",
-    "build:server": "tsc -p tsconfig.server.json",
-    "vercel-build": "prisma generate && prisma db push && npm run build",
-    "postinstall": "prisma generate",
+    "start": "node dist/server.js",
+    "build": "prisma generate && tsc && vite build",
+    "vercel-build": "prisma generate && prisma db push && tsc && vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "clean": "rimraf dist",
-    "prebuild": "npm run clean"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.17.0",

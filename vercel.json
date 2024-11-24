@@ -1,25 +1,26 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install",
   "builds": [
     {
-      "src": "dist/server/server.js",
+      "src": "dist/server.js",
       "use": "@vercel/node"
     },
     {
-      "src": "dist/**",
+      "src": "dist/**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "dist/server/server.js"
+      "dest": "/dist/server.js"
+    },
+    {
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "dist/$1"
+      "dest": "/dist/index.html"
     }
   ]
 }
