@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 
-export const handleWatchlist = async (req: Request, res: Response) => {
+export const handleWatchlist = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     // The user is already authenticated by Clerk middleware
     const userId = req.auth?.userId;

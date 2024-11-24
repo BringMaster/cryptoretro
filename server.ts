@@ -4,6 +4,7 @@ import axios from 'axios';
 import { handleWatchlist } from './src/api/watchlist';
 import { handleAssetWatchlist } from './src/api/watchlist/[assetId]';
 import dotenv from 'dotenv';
+import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
 // Load environment variables
 dotenv.config();
@@ -54,24 +55,10 @@ app.use('/api/coincap/*', async (req, res) => {
   }
 });
 
-// Protected routes without Clerk authentication
-app.use('/api/watchlist', async (req, res) => {
-  try {
-    await handleWatchlist(req, res);
-  } catch (error) {
-    console.error('Error in watchlist route:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-app.use('/api/watchlist/:assetId', async (req, res) => {
-  try {
-    await handleAssetWatchlist(req, res);
-  } catch (error) {
-    console.error('Error in asset watchlist route:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// Protected routes with Clerk authentication
+app.get('/api/watchlist', ClerkExpressRequireAuth(), handleWatchlist);
+app.post('/api/watchlist/:assetId', ClerkExpressRequireAuth(), handleAssetWatchlist);
+app.delete('/api/watchlist/:assetId', ClerkExpressRequireAuth(), handleAssetWatchlist);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

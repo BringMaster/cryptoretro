@@ -1,7 +1,7 @@
-import { Request, Response } from 'express';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
 
-export const handleAssetWatchlist = async (req: Request, res: Response) => {
+export const handleAssetWatchlist = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     // The user is already authenticated by Clerk middleware
     const userId = req.auth?.userId;
@@ -13,7 +13,7 @@ export const handleAssetWatchlist = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { assetId } = req.params;
+    const { assetId } = req.query;
 
     // Handle DELETE request
     if (req.method === 'DELETE') {
@@ -23,16 +23,20 @@ export const handleAssetWatchlist = async (req: Request, res: Response) => {
           assetId,
         },
       });
-      return res.status(200).json({ message: 'Watchlist item removed' });
+      return res.status(200).json({ message: 'Asset removed from watchlist' });
     }
 
-    return res.status(405).json({ error: 'Method not allowed' });
-  } catch (error) {
-    console.error('Error handling watchlist item:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      ...(process.env.NODE_ENV === 'development' && { stack: error instanceof Error ? error.stack : undefined })
+    // Handle POST request
+    const watchlistItem = await prisma.watchlistItem.create({
+      data: {
+        userId,
+        assetId,
+      },
     });
+
+    return res.status(201).json(watchlistItem);
+  } catch (error) {
+    console.error('Error handling watchlist:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
