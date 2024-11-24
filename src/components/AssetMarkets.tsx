@@ -186,7 +186,7 @@ const AssetMarkets: React.FC<AssetMarketsProps> = ({ assetId }) => {
                     href={market.exchangeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center text-purple-400 hover:text-purple-300 transition-colors"
+                    className="inline-flex items-center text-gray-400 hover:text-gray-300 transition-colors"
                   >
                     <span className="mr-1">Trade</span>
                     <ExternalLink className="w-4 h-4" />

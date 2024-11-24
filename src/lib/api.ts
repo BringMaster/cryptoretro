@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import pThrottle from 'p-throttle';
 import { cacheService } from './cache';
 
@@ -23,6 +23,13 @@ const apiClient = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// Add base URL for production
+if (process.env.NODE_ENV === 'production') {
+  apiClient.defaults.baseURL = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}`
+    : 'https://cryptoretro.vercel.app';
+}
 
 // Add response interceptor for debugging
 apiClient.interceptors.response.use(
@@ -72,7 +79,7 @@ const NEWS_APIS = {
   COINPAPRIKA: 'https://api.coinpaprika.com/v1/news'
 };
 
-interface NewsSource {
+export interface NewsSource {
   id: string;
   name: string;
   url: string;
@@ -127,7 +134,7 @@ export const getAssets = async () => {
   }
 };
 
-export const getNews = async ({ page = 1, limit = 15, categories, assetSymbol }: NewsParams = {}) => {
+export const getNews = async ({ page = 1, limit = 15, categories, assetSymbol }: NewsParams = {}): Promise<NewsArticle[]> => {
   try {
     // Just use CryptoCompare for now since it's more reliable
     const news = await getCryptoCompareNews({ 
@@ -147,7 +154,7 @@ export const getNews = async ({ page = 1, limit = 15, categories, assetSymbol }:
   }
 };
 
-const getCryptoCompareNews = async ({ page, limit, categories }: NewsParams) => {
+const getCryptoCompareNews = async ({ page = 1, limit = 15, categories }: NewsParams): Promise<NewsArticle[]> => {
   try {
     const params = {
       api_key: CRYPTOCOMPARE_API_KEY,
@@ -334,19 +341,10 @@ export const getAssetHistory = async (
   }
 };
 
-export const getAssetMarkets = async (assetId: string) => {
-  console.log('Fetching markets for asset:', assetId);
-  const cacheKey = `markets_${assetId}`;
-  const cachedData = await cacheService.get(cacheKey);
-
-  if (cachedData) {
-    console.log('Markets response from cache:', cachedData);
-    return cachedData;
-  }
-
+export const getAssetMarkets = async (assetId: string): Promise<any[]> => {
+  let allMarkets: any[] = [];
+  
   try {
-    let allMarkets = [];
-
     // Fetch from CoinCap
     try {
       const coincapResponse = await throttledRequest({
@@ -379,73 +377,60 @@ export const getAssetMarkets = async (assetId: string) => {
     const symbolMap: { [key: string]: string } = {
       'solana': 'SOL',
       'bitcoin': 'BTC',
-      'ethereum': 'ETH'
+      'ethereum': 'ETH',
+      // Add more mappings as needed
     };
 
-    const exchangeMap: { [key: string]: string } = {
-      'BINANCE': 'Binance',
-      'COINBASE': 'Coinbase Exchange',
-      'KRAKEN': 'Kraken',
-      'BITSTAMP': 'Bitstamp',
-      'GEMINI': 'Gemini',
-      'KUCOIN': 'KuCoin',
-      'BITFINEX': 'Bitfinex',
-      'OKX': 'OKX',
-      'HUOBI': 'Huobi',
-      'GATEIO': 'Gate.io'
-    };
-
-    const symbol = symbolMap[assetId.toLowerCase()] || assetId.toUpperCase();
+    // Try to get the symbol from the asset ID
+    let symbol = assetId.toUpperCase();
+    if (symbolMap[assetId.toLowerCase()]) {
+      symbol = symbolMap[assetId.toLowerCase()];
+    }
 
     // Fetch from CryptoCompare
     try {
-      // Fetch markets for different quote currencies
-      const quoteSymbols = ['USD', 'USDT', 'BUSD', 'USDC'];
-      const marketPromises = quoteSymbols.map(quote => 
-        throttledRequest({
-          method: 'GET',
-          url: `${CRYPTOCOMPARE_API}/top/exchanges/full`,
-          params: {
-            fsym: symbol,
-            tsym: quote,
-            limit: 100,
-            api_key: CRYPTOCOMPARE_API_KEY
-          }
-        })
-      );
-
-      const responses = await Promise.all(marketPromises);
-
-      responses.forEach((response, index) => {
-        const quoteSymbol = quoteSymbols[index];
-        if (response?.data?.Data?.Exchanges) {
-          const markets = response.data.Data.Exchanges
-            .filter((exchange: any) => 
-              exchange && 
-              exchange.VOLUME24HOUR > 0 && 
-              exchange.MARKET in exchangeMap
-            )
-            .map((exchange: any) => ({
-              exchangeId: exchangeMap[exchange.MARKET] || exchange.MARKET,
-              baseSymbol: symbol,
-              quoteSymbol,
-              priceUsd: exchange.PRICE || 0,
-              volumeUsd24Hr: (exchange.VOLUME24HOUR * exchange.PRICE).toString(),
-              volumePercent: exchange.VOLUME24HOUR > 0 
-                ? ((exchange.VOLUME24HOUR / response.data.Data.TotalVolume24H) * 100).toString()
-                : '0',
-              source: 'cryptocompare'
-            }));
-          allMarkets = [...allMarkets, ...markets];
+      const cryptoCompareResponse = await throttledRequest({
+        method: 'GET',
+        url: `${CRYPTOCOMPARE_API}/data/top/exchanges/full`,
+        params: {
+          fsym: symbol,
+          tsym: 'USD',
+          limit: 100
         }
       });
+
+      const exchanges = cryptoCompareResponse?.data?.Data?.Exchanges;
+      if (exchanges && Array.isArray(exchanges)) {
+        exchanges.forEach((exchange: any) => {
+          if (!exchange || !exchange.VOLUME24HOUR) return;
+
+          const markets = Object.keys(exchange)
+            .filter(key => key.startsWith('VOLUME24HOUR_') && exchange[key] > 0)
+            .map(key => {
+              const quoteSymbol = key.replace('VOLUME24HOUR_', '');
+              return {
+                exchangeId: exchange.MARKET,
+                baseSymbol: symbol,
+                quoteSymbol,
+                priceUsd: exchange.PRICE?.toString() || '0',
+                volumeUsd24Hr: exchange.VOLUME24HOUR?.toString() || '0',
+                volumePercent: exchange.VOLUME24HOUR > 0 
+                  ? ((exchange.VOLUME24HOUR / cryptoCompareResponse.data.Data.TotalVolume24H) * 100).toString()
+                  : '0',
+                source: 'cryptocompare'
+              };
+            });
+          allMarkets = [...allMarkets, ...markets];
+        });
+      }
     } catch (cryptoCompareError) {
       console.error('Error fetching from CryptoCompare:', cryptoCompareError);
     }
 
-    // If no markets were found from either source, throw an error
+    // If no markets were found from either source, return an empty array
     if (allMarkets.length === 0) {
-      throw new Error('No markets found for this asset');
+      console.log('No markets found for asset:', assetId);
+      return [];
     }
 
     // Deduplicate and sort markets
@@ -460,11 +445,19 @@ export const getAssetMarkets = async (assetId: string) => {
       .sort((a, b) => parseFloat(b.volumeUsd24Hr) - parseFloat(a.volumeUsd24Hr));
 
     console.log('Combined markets response:', uniqueMarkets);
-    cacheService.set(cacheKey, uniqueMarkets, CACHE_TTL.MARKETS);
+    cacheService.set(`markets_${assetId}`, uniqueMarkets, CACHE_TTL.MARKETS);
     return uniqueMarkets;
   } catch (error) {
-    console.error('Error fetching asset markets:', error);
-    throw error;
+    if (error instanceof AxiosError) {
+      console.error('Error fetching markets:', {
+        status: error.response?.status,
+        message: error.message,
+        data: error.response?.data
+      });
+    } else {
+      console.error('Unknown error fetching markets:', error);
+    }
+    return [];
   }
 };
 

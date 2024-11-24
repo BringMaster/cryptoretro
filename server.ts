@@ -1,24 +1,12 @@
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import { handleWatchlist } from './src/api/watchlist';
-import { handleAssetWatchlist } from './src/api/watchlist/[assetId]';
+import { handleWatchlistItem } from './src/api/watchlist/[assetId]';
 import dotenv from 'dotenv';
-import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 
 // Load environment variables
 dotenv.config();
-
-// Validate Clerk configuration
-if (!process.env.CLERK_SECRET_KEY) {
-  throw new Error('CLERK_SECRET_KEY is required');
-}
-
-if (!process.env.VITE_CLERK_PUBLISHABLE_KEY) {
-  throw new Error('VITE_CLERK_PUBLISHABLE_KEY is required');
-}
-
-// Configure Clerk
-process.env.CLERK_PUBLISHABLE_KEY = process.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -26,11 +14,11 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['http://retrotoken.io:3000', 'https://retrotoken.io:3000'] 
-    : ['http://localhost:3000', 'http://localhost:5000', 'http://retrotoken.io:3000'],
+    ? process.env.VERCEL_URL ? [`https://${process.env.VERCEL_URL}`] : ['https://cryptoretro.vercel.app']
+    : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Signature'],
 }));
 app.use(express.json());
 
@@ -41,34 +29,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// Protected routes with Clerk authentication
-const protectedRouter = express.Router();
-protectedRouter.use((req, res, next) => {
-  console.log('Authenticating request...');
-  console.log('CLERK_SECRET_KEY:', process.env.CLERK_SECRET_KEY?.slice(0, 10) + '...');
-  console.log('CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY?.slice(0, 10) + '...');
-  ClerkExpressRequireAuth()(req, res, next);
+// CoinCap API proxy
+app.use('/api/coincap/*', async (req, res) => {
+  try {
+    const coincapPath = req.path.replace('/api/coincap/', '');
+    const coincapUrl = `https://api.coincap.io/v2/${coincapPath}`;
+    
+    console.log('Proxying request to:', coincapUrl);
+    console.log('Query params:', req.query);
+
+    const response = await axios({
+      method: req.method,
+      url: coincapUrl,
+      params: req.query,
+      headers: {
+        'Authorization': `Bearer ${process.env.VITE_COINCAP_API_KEY}`
+      }
+    });
+
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('CoinCap API Error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal server error' });
+  }
 });
 
-// Watchlist routes (protected)
-protectedRouter.get('/watchlist', handleWatchlist);
-protectedRouter.post('/watchlist', handleWatchlist);
-protectedRouter.get('/watchlist/:assetId', handleAssetWatchlist);
-protectedRouter.delete('/watchlist/:assetId', handleAssetWatchlist);
-
-// Mount protected routes under /api
-app.use('/api', protectedRouter);
+// Watchlist endpoints
+app.get('/api/watchlist', handleWatchlist);
+app.get('/api/watchlist/:assetId', handleWatchlistItem);
+app.post('/api/watchlist/:assetId', handleWatchlistItem);
+app.delete('/api/watchlist/:assetId', handleWatchlistItem);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-  });
+  console.error('Global error handler:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 });

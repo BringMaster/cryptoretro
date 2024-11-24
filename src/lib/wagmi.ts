@@ -1,5 +1,5 @@
 import { createConfig, http } from 'wagmi'
-import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains'
+import { mainnet, polygon, optimism, arbitrum, sepolia, goerli, polygonMumbai, arbitrumGoerli, optimismGoerli } from 'wagmi/chains'
 import { walletConnect } from 'wagmi/connectors'
 import { createWeb3Modal } from '@web3modal/wagmi/react'
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config'
@@ -17,9 +17,71 @@ const metadata = {
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 }
 
-const chains = [mainnet, polygon, optimism, arbitrum] as const
+const chains = [
+  mainnet,
+  polygon,
+  optimism,
+  arbitrum,
+  // Test networks
+  sepolia,
+  goerli,
+  polygonMumbai,
+  arbitrumGoerli,
+  optimismGoerli
+] as const
 
-export const config = defaultWagmiConfig({
+// Custom storage implementation
+const customStorage: Storage = {
+  getItem(key: string): string | null {
+    try {
+      return localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  
+  setItem(key: string, value: string): void {
+    try {
+      localStorage.setItem(key, value)
+    } catch {
+      console.warn('Failed to set item in storage')
+    }
+  },
+  
+  removeItem(key: string): void {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      console.warn('Failed to remove item from storage')
+    }
+  },
+  
+  get length(): number {
+    try {
+      return localStorage.length
+    } catch {
+      return 0
+    }
+  },
+  
+  key(index: number): string | null {
+    try {
+      return localStorage.key(index)
+    } catch {
+      return null
+    }
+  },
+  
+  clear(): void {
+    try {
+      localStorage.clear()
+    } catch {
+      console.warn('Failed to clear storage')
+    }
+  }
+}
+
+const config = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
@@ -27,6 +89,8 @@ export const config = defaultWagmiConfig({
   enableInjected: true,
   enableEIP6963: true,
   enableCoinbase: true,
+  ssr: false,
+  storage: customStorage,
 })
 
 export const modal = createWeb3Modal({

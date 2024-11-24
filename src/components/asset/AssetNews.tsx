@@ -1,67 +1,114 @@
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface NewsArticle {
-  title: string;
-  description: string;
-  url: string;
-  publishedAt: string;
-  source: {
-    name: string;
-  };
-}
+import { ExternalLink } from 'lucide-react';
+import './AssetNews.css';
 
 interface AssetNewsProps {
-  news: NewsArticle[];
-  isLoading: boolean;
-  assetName: string;
+  assetSymbol: string;
 }
 
-const AssetNews = ({ news, isLoading, assetName }: AssetNewsProps) => {
-  if (isLoading) {
+interface NewsItem {
+  id: string;
+  title: string;
+  url: string;
+  body: string;
+  source: string;
+  published_on: number;
+}
+
+export function AssetNews({ assetSymbol }: AssetNewsProps) {
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `https://min-api.cryptocompare.com/data/v2/news/?categories=${assetSymbol.toLowerCase()}&excludeCategories=Sponsored`,
+          {
+            headers: {
+              'Authorization': `Apikey ${import.meta.env.VITE_CRYPTOCOMPARE_API_KEY}`
+            }
+          }
+        );
+        const data = await response.json();
+        if (data.Data) {
+          // Limit to 10 news items
+          setNews(data.Data.slice(0, 10));
+        }
+      } catch (error) {
+        console.error('Error fetching news:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNews();
+  }, [assetSymbol]);
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-4">
-              <div className="h-4 bg-gray-200 w-3/4 mb-2" />
-              <div className="h-4 bg-gray-200 w-1/2" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="w-full bg-zinc-900/40 backdrop-blur supports-[backdrop-filter]:bg-zinc-900/40">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center h-[600px]">
+            <div className="text-zinc-400">Loading news...</div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  if (!news || news.length === 0) {
-    return <p className="text-gray-500">No news available for {assetName}</p>;
-  }
-
   return (
-    <div className="space-y-4">
-      {news.map((article, index) => (
-        <Card key={index} className="border-2 border-black hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="text-xl">
-              <a
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
+    <Card className="w-full bg-[#0a0a0a] backdrop-blur supports-[backdrop-filter]:bg-[#0a0a0a]">
+      <CardHeader className="border-b border-zinc-800/40">
+        <CardTitle className="text-zinc-100">Latest {assetSymbol} News</CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+          <div className="space-y-3">
+            {news.map((item) => (
+              <Card 
+                key={item.id} 
+                className="bg-zinc-900/60 border-zinc-800/40 group cursor-pointer hover:bg-zinc-800/40 transition-all duration-200" 
+                onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
               >
-                {article.title}
-              </a>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600 mb-2">{article.description}</p>
-            <p className="text-sm text-gray-500">
-              {new Date(article.publishedAt).toLocaleDateString()} • {article.source.name}
-            </p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+                <div className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start gap-4">
+                      <h3 className="font-medium text-sm leading-tight text-zinc-200 group-hover:text-emerald-400 transition-colors line-clamp-2">
+                        {item.title}
+                      </h3>
+                      <span 
+                        className="text-emerald-400 hover:text-emerald-300 flex-shrink-0 mt-0.5"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(item.url, '_blank', 'noopener,noreferrer');
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <p className="text-sm text-zinc-400 line-clamp-2">{item.body}</p>
+                    <div className="flex justify-between items-center text-xs text-zinc-500">
+                      <span>{item.source}</span>
+                      <span>{formatDate(item.published_on)}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
-};
-
-export default AssetNews;
+}
